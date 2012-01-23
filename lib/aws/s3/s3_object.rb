@@ -296,8 +296,12 @@ module AWS
         if use_multipart?(data_options, put_options)
           put_options.delete(:multipart_threshold)
           multipart_upload(put_options) do |upload|
+            part_number = 1
             each_part(data_options, put_options) do |part|
-              upload.add_part(part)
+              retry_stubbornly do
+                upload.add_part(part, :part_number => part_number)
+              end
+              part_number += 1
             end
           end
         else
@@ -310,6 +314,7 @@ module AWS
           end
         end
       end
+
 
       # Performs a multipart upload.  Use this if you have specific
       # needs for how the upload is split into parts, or if you want
@@ -833,6 +838,24 @@ module AWS
       def reduced_redundancy= value
         copy_from(key, :reduced_redundancy => value)
         value
+      end
+
+      # @private
+      private
+      def retry_stubbornly(&block)
+        options = {
+          :retries => 10,
+          :retry_wait => 10
+        }
+        begin
+          block.call
+        rescue Exception => e
+          retries ||= options[:retries]
+          retries -=1
+          raise(e) if retries <= 0
+          sleep(options[:retry_wait])
+          retry
+        end
       end
 
       # @private
