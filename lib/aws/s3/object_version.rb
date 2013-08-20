@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,8 +16,8 @@ module AWS
 
     # Represents a single version of an S3Object.
     #
-    # When you enable versioning on a S3 bucket, writing to an object 
-    # will create an object version instead of replacing the existing 
+    # When you enable versioning on a S3 bucket, writing to an object
+    # will create an object version instead of replacing the existing
     # object.
     class ObjectVersion
 
@@ -48,6 +48,11 @@ module AWS
       # @return (see S3Object#key)
       def key
         object.key
+      end
+
+      # (see S3Object#url_for)
+      def url_for method, options = {}
+        object.url_for(method, options.merge(:version_id => version_id))
       end
 
       # @see S3Object#head
@@ -89,9 +94,14 @@ module AWS
       end
 
       # Deletes this object version from S3.
+      # @option options [String] :mfa The serial number and current token code of
+      #   the Multi-Factor Authentication (MFA) device for the user. Format
+      #   is "SERIAL TOKEN" - with a space between the serial and token.
       # @return (see S3Object#delete)
-      def delete
-        object.delete(:version_id => @version_id)
+      def delete(options = {})
+        object.delete(:version_id => @version_id,
+                      :mfa        => options[:mfa]
+                     )
       end
 
       # @return [Boolean] Returns this if this is the latest version of
@@ -102,14 +112,14 @@ module AWS
       end
 
       # If you delete an object in a versioned bucket, a delete marker
-      # is created.  
+      # is created.
       # @return [Boolean] Returns true if this version is a delete marker.
       def delete_marker?
         if @delete_marker.nil?
           begin
             # S3 responds with a 405 (method not allowed) when you try
             # to HEAD an s3 object version that is a delete marker
-            metadata['foo'] 
+            metadata['foo']
             @delete_marker = false
           rescue Errors::MethodNotAllowed => error
             @delete_marker = true
@@ -128,7 +138,7 @@ module AWS
 
       alias_method :eql?, :==
 
-      # @private
+      # @api private
       def inspect
         "<#{self.class}:#{object.bucket.name}:#{object.key}:#{version_id}>"
       end

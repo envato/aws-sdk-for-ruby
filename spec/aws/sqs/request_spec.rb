@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,41 +19,23 @@ module AWS
     describe Request do
 
       let(:request) { described_class.new }
-      
-      it_should_behave_like "an authorize v2 request"
 
-      it_should_behave_like "an authorize v2 request with a session token"
+      it_should_behave_like "an authorize v4 request"
 
       it_should_behave_like "an aws query request"
 
       before(:each) do
-        request.host = "endpoint"
+        request.host = "hostname.com"
       end
 
       context 'no queue URL parameter' do
 
         it 'should use the endpoint as the host' do
-          request.host.should == "endpoint"
+          request.host.should == "hostname.com"
         end
 
         it 'should have the path "/"' do
           request.path.should == "/"
-        end
-
-      end
-
-      context 'queue URL parameter included' do
-
-        before(:each) do
-          request.add_param("QueueUrl", "http://foo.bar/baz")
-        end
-
-        it 'should use the host from the queue URL' do
-          request.host.should == "foo.bar"
-        end
-
-        it 'should use the path from the queue URL' do
-          request.path.should == "/baz"
         end
 
       end

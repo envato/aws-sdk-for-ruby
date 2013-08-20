@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,8 +49,9 @@ module AWS
 
           before(:each) do
             client.stub(:run_instances).and_return(resp)
-            resp.stub(:instances_set).
-              and_return([double("inst", :instance_id => "i-123")])
+            resp.data[:instances_set] = [{
+              :instance_id => "i-123",
+            }]
           end
 
           context 'one instance' do
@@ -100,11 +101,10 @@ module AWS
             let(:resp) { client.new_stub_for(:run_instances) }
 
             before(:each) do
-              resp.stub(:instances_set).
-                and_return([double("inst 1",
-                                   :instance_id => "i-123"),
-                            double("instn 2",
-                                   :instance_id => "i-123")])
+              resp.data[:instances_set] = [
+                { :instance_id => "i-123" },
+                { :instance_id => "i-321" },
+              ]
               client.stub(:run_instances).and_return(resp)
             end
 
@@ -134,7 +134,7 @@ module AWS
                 end
 
                 it 'should use the instance IDs from the response' do
-                  return_value.map { |i| i.id }.should == ["i-123", "i-123"]
+                  return_value.map { |i| i.id }.should == ["i-123", "i-321"]
                 end
 
                 it 'should pass the config' do
@@ -175,6 +175,34 @@ module AWS
                 and_return(resp)
               collection.create(Hash[[[resource_param,
                                        resource_class.new("resource-123")]]])
+            end
+
+          end
+
+          context ':iam_instance_profile' do
+
+            it 'accepts an arn' do
+              arn = 'arn:aws:iam::arn:aws:iam::12345678:instance-profile/name'
+              client.should_receive(:run_instances).with(hash_including(
+                :iam_instance_profile => { :arn => arn }
+              )).and_return(resp)
+              collection.create :iam_instance_profile => arn
+            end
+
+            it 'accepts a name' do
+              name = 'instance-profile-name'
+              client.should_receive(:run_instances).with(hash_including(
+                :iam_instance_profile => { :name => name }
+              )).and_return(resp)
+              collection.create :iam_instance_profile => name
+            end
+
+            it 'accepts a hash' do
+              profile = { :name => 'instance-profile-name' }
+              client.should_receive(:run_instances).with(hash_including(
+                :iam_instance_profile => profile
+              )).and_return(resp)
+              collection.create :iam_instance_profile => profile
             end
 
           end
@@ -270,15 +298,15 @@ module AWS
                 and_return(resp)
 
               collection.create(
-                :image_id => "ami-123", 
+                :image_id => "ami-123",
                 :dedicated_tenancy => true)
             end
 
             it 'should accept tenancy with an availability zone' do
               client.should_receive(:run_instances).
-                with(hash_including(:placement => { 
+                with(hash_including(:placement => {
                   :tenancy => "dedicated",
-                  :availability_zone => "us-east-1a" 
+                  :availability_zone => "us-east-1a"
                 })).and_return(resp)
               collection.create(:image_id => "ami-123",
                 :availability_zone => AvailabilityZone.new("us-east-1a"),
@@ -341,7 +369,7 @@ module AWS
             end
 
             context 'non-vpc' do
-              
+
               it 'accepts singular ids' do
                 should_receive_sg_ids('sg-123')
                 run_instance(:security_group_ids => 'sg-123')
@@ -414,7 +442,7 @@ module AWS
                 g1 = SecurityGroup.new('sg-id1')
                 g2 = SecurityGroup.new('sg-id2')
                 should_receive_sg_ids('sg-id1', 'sg-id2')
-                run_instance(:subnet_id => 's', 
+                run_instance(:subnet_id => 's',
                   :security_groups => [g1, g2])
               end
 
@@ -425,14 +453,14 @@ module AWS
                 sg_collection.should_receive(:filter).
                   with('group-name', ['name1', 'name2']).
                   and_return([
-                    SecurityGroup.new('sg-id1'), 
+                    SecurityGroup.new('sg-id1'),
                     SecurityGroup.new('sg-id2')])
-                
+
                 EC2.stub_chain(:new, :security_groups).and_return(sg_collection)
 
                 should_receive_sg_ids('sg-id1', 'sg-id2')
 
-                run_instance(:subnet_id => 's', 
+                run_instance(:subnet_id => 's',
                   :security_groups => %w(name1 name2))
 
               end
@@ -509,11 +537,11 @@ module AWS
 
             context 'badly formatted input' do
 
-              it 'should reject an array' do
+              it 'should accepts an array' do
                 lambda do
                   collection.create(:image_id => "ami-123",
                                     :block_device_mappings => [])
-                end.should raise_error(ArgumentError, "block_device_mappings must be a hash")
+                end.should_not raise_error
               end
 
               it 'should reject non-string keys' do

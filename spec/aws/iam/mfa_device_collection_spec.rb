@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -35,8 +35,8 @@ module AWS
       end
 
       context '#enable' do
-        
-        it 'call enable_mfa_device create_user on the client' do 
+
+        it 'call enable_mfa_device create_user on the client' do
           client.should_receive(:enable_mfa_device).with(
             :user_name => 'username',
             :serial_number => 'ABCXYZ123',
@@ -68,6 +68,17 @@ module AWS
 
       end
 
+      context '#clear' do
+
+        it 'calls deactivate on each device' do
+          device = double("device")
+          device.should_receive(:deactivate)
+          devices.stub(:each).and_yield(device)
+          devices.clear
+        end
+
+      end
+
       it_behaves_like "a pageable collection with limits" do
 
         let(:collection)      { devices }
@@ -95,6 +106,30 @@ module AWS
 
           it 'yields devies with the correct user' do
             devices.collect{|d| d.user }.should == [user, user]
+          end
+
+        end
+
+        context 'virtual mfa devices' do
+
+          def stub_n_members response, n
+            response.stub(:mfa_devices).
+              and_return((1..n).collect{|i|
+                           double("virtual-mfa-device-#{i}", {
+                                    :user_name => user.name,
+                                    :serial_number => "arn:#{i}"
+                                  })
+                         })
+          end
+
+          it_behaves_like "a collection that yields models" do
+
+            let(:member_class) { VirtualMfaDevice }
+
+            it 'yields devices with populated ARNs' do
+              devices.collect{|d| d.arn }.should == %w(arn:1 arn:2)
+            end
+
           end
 
         end

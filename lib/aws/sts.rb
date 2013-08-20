@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,13 +23,15 @@ module AWS
   # IAM users.
   #
   # @example Getting temporary credentials and using them to make an EC2 request
+  #
   #   sts = AWS::STS.new(:access_key_id => "LONG_TERM_KEY",
   #                      :secret_access_key => "LONG_TERM_SECRET")
-  #   session = AWS::STS.new.new_session(:duration => 60*60)
+  #   session = sts.new_session(:duration => 60*60)
   #   ec2 = AWS::EC2.new(session.credentials)
   #   ec2.instances.to_a
   #
   # @example Getting temporary credentials with restricted permissions
+  #
   #   policy = AWS::STS::Policy.new
   #   policy.allow(:actions => ["s3:*", "ec2:*"],
   #                :resources => :any)
@@ -37,18 +39,25 @@ module AWS
   #   ec2 = AWS::EC2.new(session.credentials)
   #   ec2.instances.to_a
   #
+  # @!attribute [r] client
+  #   @return [Client] the low-level STS client object
   class STS
 
-    AWS.register_autoloads(self) do
-      autoload :Client,           'client'
-      autoload :Errors,           'errors'
-      autoload :FederatedSession, 'federated_session'
-      autoload :Policy,           'policy'
-      autoload :Request,          'request'
-      autoload :Session,          'session'
-    end
+    autoload :Client, 'aws/sts/client'
+    autoload :Errors, 'aws/sts/errors'
+    autoload :FederatedSession, 'aws/sts/federated_session'
+    autoload :Policy, 'aws/sts/policy'
+    autoload :Request, 'aws/sts/request'
+    autoload :Session, 'aws/sts/session'
 
     include Core::ServiceInterface
+
+    endpoint_prefix 'sts', :global => true
+
+    # (see Client#assume_role)
+    def assume_role options = {}
+      client.assume_role(options).data
+    end
 
     # Returns a set of temporary credentials for an AWS account or IAM
     # User. The credentials consist of an Access Key ID, a Secret
@@ -66,6 +75,14 @@ module AWS
     #   with 43200s (12 hours) as the default. Sessions for AWS
     #   account owners are restricted to a maximum of 3600s (one
     #   hour).
+    #
+    # @option opts [String] :serial_number The identification number of the
+    #   Multi-Factor Authentication (MFA) device for the user.
+    #
+    # @option opts [String] :token_code The value provided by the MFA device.
+    #   If the user has an access policy requiring an MFA code, provide the
+    #   value here to get permission to resources as specified in the access
+    #   policy.
     #
     # @return [Session]
     def new_session(opts = {})
@@ -98,7 +115,7 @@ module AWS
     # @option opts [Integer] :duration The duration, in seconds, that
     #   the session should last. Acceptable durations for federation
     #   sessions range from 3600s (one hour) to 129600s (36 hours),
-    #   with 43200s (12 hours) as the default.
+    #   with one hour as the default.
     #
     # @option opts [String, AWS::STS::Policy] :policy A policy
     #   specifying the permissions to associate with the session. The
@@ -110,6 +127,7 @@ module AWS
     #   who issued the session.
     #
     # @return [FederatedSession]
+    #
     def new_federated_session(name, opts = {})
       opts = opts.merge(:name => name)
       case
@@ -119,27 +137,25 @@ module AWS
         opts[:policy] = opts[:policy].to_json
       end
       get_session(:get_federation_token, opts) do |resp, session_opts|
-        session_opts.merge!(:user_id => resp.federated_user.federated_user_id,
-                            :user_arn => resp.federated_user.arn,
-                            :packed_policy_size => resp.packed_policy_size)
+        session_opts.merge!(
+          :user_id => resp[:federated_user][:federated_user_id],
+          :user_arn => resp[:federated_user][:arn],
+          :packed_policy_size => resp[:packed_policy_size]
+        )
         FederatedSession.new(session_opts)
       end
     end
 
-    # @private
     protected
+
     def get_session(method, opts = {})
       opts[:duration_seconds] = opts.delete(:duration) if
         opts[:duration]
       resp = client.send(method, opts)
-      credentials = resp.credentials
+      credentials = resp[:credentials].dup
       session_opts = {
-        :credentials => {
-          :access_key_id => credentials.access_key_id,
-          :secret_access_key => credentials.secret_access_key,
-          :session_token => credentials.session_token
-        },
-        :expires_at => credentials.expiration
+        :credentials => credentials,
+        :expires_at => credentials.delete(:expiration),
       }
       yield(resp, session_opts)
     end

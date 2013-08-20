@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,8 +14,8 @@
 module AWS
   class ELB
     class LoadBalancerPolicy < Core::Resource
-      
-      # @private
+
+      # @api private
       def initialize load_balancer, name, options = {}
         @load_balancer = load_balancer
         super(load_balancer, options.merge(:name => name.to_s))
@@ -24,9 +24,9 @@ module AWS
       # @return [LoadBalancer] Returns the load balancer this policy belongs to.
       attr_reader :load_balancer
 
-      attribute :name, :static => true, :as => :policy_name
+      attribute :name, :static => true, :from => :policy_name
 
-      attribute :type, :static => true, :as => :policy_type_name
+      attribute :type, :static => true, :from => :policy_type_name
 
       attribute :policy_attribute_descriptions, :static => true
 
@@ -66,7 +66,7 @@ module AWS
 
       # Useful for determining if a policy with the given name exists:
       #
-      #   load_balancer.policies['my-policy-name'].exists?  # => true/false
+      #     load_balancer.policies['my-policy-name'].exists?  # => true/false
       #
       # @return [Boolean] Returns true this policy's load balancer has a
       #   policy with this name.

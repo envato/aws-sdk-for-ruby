@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -43,28 +43,29 @@ module AWS
 
           let(:ip_permissions) do
             [
-              double("ip-permission-1",
+              {
                 :ip_protocol => :tcp,
                 :from_port => 80,
                 :to_port => 81,
                 :ip_ranges => [
-                  double("ip1", :cidr_ip => "1.1.1.1/1"),
-                  double("ip2", :cidr_ip => "2.2.2.2/2")
+                  { :cidr_ip => '1.1.1.1/1' },
+                  { :cidr_ip => '2.2.2.2/2' },
                 ],
                 :groups => [
-                  double('grp1',
-                    :group_id => 'grp1-id',
-                    :user_id => 'grp1-user-id'),
-                  double('grp2',
-                    :group_id => 'grp2-id',
-                    :user_id => 'grp2-user-id')
+                  { :group_id => 'grp1-id', :user_id => 'grp1-user-id' },
+                  { :group_id => 'grp2-id', :user_id => 'grp2-user-id' },
                 ]
-              ),
+              },
             ]
           end
 
           before(:each) do
-            group.stub(:ip_permissions_list).and_return(ip_permissions)
+            resp = client.stub_for(:describe_security_groups)
+            resp[:security_group_index][group.id] = {
+              :security_group_id => group.id,
+              :ip_permissions => ip_permissions
+            }
+            client.stub(:describe_security_groups).and_return(resp)
           end
 
           it 'yields IpPermission objects' do
@@ -97,18 +98,23 @@ module AWS
             perm.groups[1].owner_id.should == 'grp2-user-id'
           end
 
+          it 'should properly execute include?' do
+            perm = collection.to_a.first
+            collection.include?(perm).should be(true)
+          end
+
           context 'vpc security group without ports' do
-            
+
             let(:ip_permissions) do
               [
-                double("ip-permission-1",
+                {
                   :ip_protocol => 39,
                   :ip_ranges => [
-                    double("ip1", :cidr_ip => "1.1.1.1/1"),
-                    double("ip2", :cidr_ip => "2.2.2.2/2")
+                    { :cidr_ip => '1.1.1.1/1' },
+                    { :cidr_ip => '2.2.2.2/2' },
                   ],
                   :groups => []
-                ),
+                },
               ]
             end
 

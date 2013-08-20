@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,10 +28,10 @@ module AWS
         let(:client_method) { :describe_key_pairs }
 
         def stub_two_members(resp)
-          resp.stub(:key_set).and_return([
-            double('kp1', :key_name => 'abc', :key_fingerprint => 'cba'),
-            double('kp2', :key_name => 'xyz', :key_fingerprint => 'zyx'),
-          ])
+          resp.data[:key_set] = [
+            { :key_name => 'abc', :key_fingerprint => 'cba' },
+            { :key_name => 'xyz', :key_fingerprint => 'zyx' },
+          ]
         end
 
         it_should_behave_like "ec2 collection array access"
@@ -41,9 +41,9 @@ module AWS
           let(:response) { client.stub_for(:create_key_pair) }
 
           before(:each) do
-            response.stub(:key_name).and_return('key-name')
-            response.stub(:key_fingerprint).and_return('fingerprint')
-            response.stub(:key_material).and_return('privatekey')
+            response.data[:key_name] = 'key-name'
+            response.data[:key_fingerprint] = 'fingerprint'
+            response.data[:key_material] = 'privatekey'
             client.stub(:create_key_pair).and_return(response)
           end
 
@@ -69,6 +69,10 @@ module AWS
             collection.create('key-name').private_key.should == 'privatekey'
           end
 
+          it 'returns a key pair with the correct config' do
+            collection.create('key-name').config.should eq(config)
+          end
+
         end
 
         context '#import' do
@@ -76,8 +80,8 @@ module AWS
           let(:response) { client.stub_for(:import_key_pair) }
 
           before(:each) do
-            response.stub(:key_name).and_return('key-name')
-            response.stub(:key_fingerprint).and_return('fingerprint')
+            response.data[:key_name] = 'key-name'
+            response.data[:key_fingerprint] = 'fingerprint'
             client.stub(:import_key_pair).and_return(response)
           end
 

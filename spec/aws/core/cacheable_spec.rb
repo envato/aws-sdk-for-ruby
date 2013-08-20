@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -36,11 +36,16 @@ module AWS::Core
 
       let(:resource) { AWS::SomeService::MyResource.new }
 
-      let(:signer) { double("signer", :access_key_id => "ACCESS_KEY") }
+      let(:credential_provider) {
+        double("creds", :access_key_id => "ACCESS_KEY")
+      }
 
-      let(:config) { double("config",
-                            :signer => signer,
-                            :some_service_endpoint => "ENDPOINT") }
+      let(:config) {
+        double("config", {
+          :credential_provider => credential_provider,
+          :region => "ENDPOINT",
+        })
+      }
 
       before(:each) do
         resource.stub(:config).and_return(config)

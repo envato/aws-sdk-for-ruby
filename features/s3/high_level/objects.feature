@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -47,6 +47,17 @@ Feature: CRUD Objects (High Level)
     | http | uri  | /foo  |
 
   @head_object
+  Scenario: Ask if an S3 object exists (does exist)
+    Given I ask for the object with key "foo"
+    And I write the string "HELLO" to it
+    When I ask if the object exists
+    Then the result should be true
+    And a request should have been made like:
+    | TYPE | NAME | VALUE |
+    | http | verb | HEAD  |
+    | http | uri  | /foo  |
+
+  @head_object
   Scenario: Get an object's ETag
     Given I ask for the object with key "foo"
     And I write the string "HELLO" to it
@@ -76,11 +87,6 @@ Feature: CRUD Objects (High Level)
     When I write the string "HELLO" to it
     Then the result should be the object with key "foo"
     And the object should eventually have "HELLO" as its body
-    And a request should have been made like:
-    | TYPE | NAME | VALUE |
-    | http | verb | PUT   |
-    | http | uri  | /foo  |
-    | http | body | HELLO |
 
   @put_object @multibyte
   Scenario: Write an object with a multibyte string
@@ -117,6 +123,12 @@ Feature: CRUD Objects (High Level)
     | TYPE   | NAME             | VALUE |
     | http   | verb             | PUT   |
     | header | x-amz-meta-color | blue  |
+
+  @put_object
+  Scenario: Write object metadata with trailing spaces
+    Given I ask for the object with key "foo"
+    When I write data passing metadata attribute "color" with value "blue "
+    Then the object should eventually have metadata "color" set to "blue"
 
   @delete_object
   Scenario: Delete an object
@@ -179,7 +191,7 @@ Feature: CRUD Objects (High Level)
     | AWS::S3::Errors::PreconditionFailed | PreconditionFailed |
     | AWS::Errors::ClientError            | PreconditionFailed |
 
-  @read_object
+  @read_object @wip @broken
   Scenario Outline: Read an object if it has been modified recently
     Given I ask for the object with key "foo"
     And I write the string "HELLO" to it
@@ -209,9 +221,8 @@ Feature: CRUD Objects (High Level)
     When I ask for the list of all the objects as an array
     Then the result should include the object with key "foo"
     And a request should have been made like:
-    | TYPE | NAME       | VALUE                                      |
-    | http | verb       | GET                                        |
-    | http | host_match | ruby-integration-test-\d+.s3.amazonaws.com |
+    | TYPE | NAME       | VALUE |
+    | http | verb       | GET   |
 
   @list_objects @paginate
   Scenario: List all objects while paginating
@@ -327,6 +338,19 @@ Feature: CRUD Objects (High Level)
     | enable  | REDUCED_REDUNDANCY |
     | disable | STANDARD           |
 
+  Scenario: Renaming an object
+    Given I write "bar" to the key "foo"
+    When I move the key "foo" to "foo2"
+    Then the object "foo" should not exist
+    Then the object "foo2" should have the data "bar"
+
+  Scenario: Renaming an object
+    Given I write "bar" to the key "foo"
+    And I create a new bucket
+    When I move the key "foo" to "foo2" to the new bucket
+    Then the object "foo" should not exist
+    Then the object "foo2" should have the data "bar" in the new bucket
+
   Scenario: Change ACL on an S3 object using a canned ACL
     Given I write "a-string" to the key "foo"
     When I grant public read permissions on the object "foo"
@@ -335,6 +359,28 @@ Feature: CRUD Objects (High Level)
     | TYPE   | NAME      | VALUE       |
     | http   | verb      | PUT         |
     | header | x-amz-acl | public-read |
+
+  @presigned
+  Scenario: Presigned HTTPS get
+    Given I write "world" to the key "hello"
+    When I create a pre-signed https "GET" uri
+    When I make a https get request to the presigned uri
+    Then the returned value should "world"
+
+  @presigned
+  Scenario: Presigned HTTP get
+    Given I write "world" to the key "hello"
+    When I create a pre-signed http "GET" uri
+    When I make a http get request to the presigned uri
+    Then the returned value should "world"
+
+  @sts @presigned
+  Scenario: Presigned get with session credentials
+    Given I write "world" to the key "hello"
+    And I ask for temporary security credentials
+    When I create a pre-signed "GET" uri using the session credentials
+    When I make a https get request to the presigned uri
+    Then the returned value should "world"
 
   @batch_delete
   Scenario: Multi-object delete with delete_if
@@ -366,3 +412,29 @@ Feature: CRUD Objects (High Level)
     | http  | verb    | POST  |
     | param | delete  |       |
     And the bucket should be empty
+
+  @restore @tiered_storage
+  Scenario: Restoring an object that is not archived
+    Given I ask for the object with key "foo"
+    And I write the string "HELLO" to it
+    And the object should eventually have "HELLO" as its body
+    When I try to restore the object
+    Then I should get a "InvalidObjectState" client exception as follows:
+    | field   | value                                                            |
+    | code    | InvalidObjectState                                               |
+    | message | Restore is not allowed, as object's storage class is not GLACIER |
+
+  @list_objects @paginate @delimiter
+  Scenario: Properly paginate when using a delimiter
+    Given I have a bucket with the following keys:
+    | key                     |
+    | videos/wedding.mkv      |
+    | videos/vacation.mkv     |
+    | photos/2009/family.jpg  |
+    | photos/2009/friends.jpg |
+    | photos/2010/family.jpg  |
+    When I ask for all objects using the delimiter "/", 1 at a time
+    Then I should get objects with the following prefixes:
+    | prefix  |
+    | videos/ |
+    | photos/ |

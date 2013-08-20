@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,12 +25,12 @@ module AWS
 
       let(:client) { config.s3_client }
 
-      let(:bucket) { Bucket.new('foobucket', :config => config) }
+      let(:bucket) { Bucket.new('foobucket', :config => config, :s3_client => client) }
 
       let(:object) { S3Object.new(bucket, 'foo') }
 
       it_behaves_like('it has an ACL',
-                      :set_method => :set_object_acl,
+                      :set_method => :put_object_acl,
                       :get_method => :get_object_acl,
                       :options => {
                         :bucket_name => "foobucket",
@@ -120,15 +120,37 @@ module AWS
 
       context '#write' do
 
+        context ':reduced_redundancy' do
+
+          it 'converts this options to :storage_class when true' do
+            client.should_receive(:put_object).
+              with(hash_including(:storage_class => 'REDUCED_REDUNDANCY')).
+              and_return(client.stub_for(:put_object))
+            object.write "data", :reduced_redundancy => true
+          end
+
+          it 'omits :storage_class when false' do
+            client.should_receive(:put_object).
+              with(hash_not_including(:storage_class)).
+              and_return(client.stub_for(:put_object))
+            object.write "data", :reduced_redundancy => false
+          end
+
+          it 'omits :storage_class not specified' do
+            client.should_receive(:put_object).
+              with(hash_not_including(:storage_class)).
+              and_return(client.stub_for(:put_object))
+            object.write "data", :reduced_redundancy => false
+          end
+
+        end
+
         context 'with no arguments' do
 
-          it 'should call put_object with the bucket, key and empty data' do
-            client.should_receive(:put_object).
-              with(:bucket_name => "foobucket",
-                   :key => "foo",
-                   :data => "").
-              and_return(client.stub_for(:put_object))
-            object.write
+          it 'should raise an argument error' do
+            lambda {
+              object.write
+            }.should raise_error(ArgumentError)
           end
 
         end
@@ -136,11 +158,13 @@ module AWS
         context 'with a string' do
 
           it 'should call put_object with the bucket, key and data' do
-            client.should_receive(:put_object).
-              with(:bucket_name => "foobucket",
-                   :key => "foo",
-                   :data => "HELLO").
-              and_return(client.stub_for(:put_object))
+            client.should_receive(:put_object).with do |options|
+              options[:bucket_name].should eq('foobucket')
+              options[:key].should eq('foo')
+              options[:data].should be_a(StringIO)
+              options[:data].read.should eq('HELLO')
+              options
+            end.and_return(client.stub_for(:put_object))
             object.write("HELLO")
           end
 
@@ -149,19 +173,35 @@ module AWS
         context 'with a file path' do
 
           it 'should call put_object with the bucket, key and data' do
+
             f = Tempfile.new("test")
+            f.write "abc"
+            f.rewind
+
+            # 1.9 supports encoding, 1.8 does not
+            if Object.const_defined?(:Encoding)
+              File.should_receive(:open).
+                with(f.path, 'rb', :encoding => "BINARY").
+                and_return(f)
+            else
+              File.should_receive(:open).with(f.path, 'rb').and_return(f)
+            end
+
             client.should_receive(:put_object).
               with(:bucket_name => "foobucket",
                    :key => "foo",
-                   :file => f.path).
+                   :content_length => 3,
+                   :data => f).
               and_return(client.stub_for(:put_object))
+
             object.write(:file => f.path)
+
           end
 
           it 'should raise an error if there is a data argument' do
             lambda do
               object.write("HELLO", :file => "HELLO")
-            end.should raise_error("Object data passed twice (argument and file path)")
+            end.should raise_error(ArgumentError, /data passed multiple ways/)
           end
 
         end
@@ -169,18 +209,19 @@ module AWS
         context 'with a data option' do
 
           it 'should call put_object with the bucket, key and data' do
+
+            io = double('io', :size => 5)
+            StringIO.should_receive(:new).
+              with('HELLO').
+              and_return(io)
+
             client.should_receive(:put_object).
               with(:bucket_name => "foobucket",
                    :key => "foo",
-                   :data => "HELLO").
+                   :data => io,
+                   :content_length => 5).
               and_return(client.stub_for(:put_object))
             object.write(:data => "HELLO")
-          end
-
-          it 'should raise an error if data is passed as an option and an argument' do
-            lambda do
-              object.write("HELLO", :data => "HELLO")
-            end.should raise_error("Object data passed twice (argument and option)")
           end
 
         end
@@ -193,7 +234,8 @@ module AWS
               client.should_receive(:put_object).
                 with(:bucket_name => "foobucket",
                      :key => "foo",
-                     :data => "HELLO",
+                     :data => instance_of(StringIO),
+                     :content_length => 5,
                      :content_md5 => "62HurZDjuJnGvL4nrFgWYA==").
               and_return(client.stub_for(:put_object))
               object.write("HELLO", :content_md5 => "62HurZDjuJnGvL4nrFgWYA==")
@@ -207,10 +249,38 @@ module AWS
               client.should_receive(:put_object).
                 with(:bucket_name => "foobucket",
                      :key => "foo",
-                     :data => "",
+                     :data => instance_of(StringIO),
+                     :content_length => 0,
                      :content_md5 => "62HurZDjuJnGvL4nrFgWYA==").
               and_return(client.stub_for(:put_object))
-              object.write(:content_md5 => "62HurZDjuJnGvL4nrFgWYA==")
+              object.write('', :content_md5 => "62HurZDjuJnGvL4nrFgWYA==")
+            end
+
+          end
+
+          context 'with acl options' do
+
+            it 'should convert symbolized canned acls to strings' do
+              client.should_receive(:put_object).with(hash_including({
+                :acl => :public_read,
+              })).and_return(client.stub_for(:put_object))
+              object.write('data', :acl => :public_read)
+            end
+
+            it 'passes :grant_* options along to the client' do
+              client.should_receive(:put_object).with(hash_including({
+                :grant_read => 'read',
+                :grant_write => 'write',
+                :grant_read_acp => 'read-acp',
+                :grant_write_acp => 'read-acp',
+                :grant_full_control => 'full-control',
+              })).and_return(client.stub_for(:put_object))
+              object.write('data',
+                :grant_read => 'read',
+                :grant_write => 'write',
+                :grant_read_acp => 'read-acp',
+                :grant_write_acp => 'read-acp',
+                :grant_full_control => 'full-control')
             end
 
           end
@@ -277,7 +347,8 @@ module AWS
 
           it 'should pass additional options to the multipart_upload call' do
             object.should_receive(:multipart_upload).
-              with(:metadata => { "color" => "red" }).
+              with(:metadata => { "color" => "red" },
+                   :data => instance_of(StringIO)).
               and_yield(upload)
             object.write("HELLO",
                          :metadata => { "color" => "red" },
@@ -355,7 +426,7 @@ module AWS
           end
 
           it 'should be an object version with the returned version ID' do
-            resp.stub(:version_id).and_return("abc123")
+            resp.data[:version_id] = "abc123"
             return_value.should be_an(ObjectVersion)
             return_value.config.should be(config)
             return_value.object.should be(object)
@@ -445,16 +516,23 @@ module AWS
           object.multipart_upload {|upload|}
         end
 
-        it 'should abort the upload if an error is raised' do
+        it 'should abort the upload if an error is raised', :foo => true do
 
           client.should_receive(:abort_multipart_upload).
             with(:bucket_name => "foobucket",
                  :key => "foo",
                  :upload_id => "abc123")
 
-          object.multipart_upload do |upload| 
-            upload.add_part('part')
-            raise 'oops'
+          e = StandardError.new('error')
+
+          # after aborting the upload, the error should be re-raised
+          begin
+            object.multipart_upload do |upload|
+              upload.add_part('part')
+              raise e
+            end
+          rescue => error
+            error.should eq(e)
           end
 
         end
@@ -462,7 +540,7 @@ module AWS
         it 'does not abort the upload if an exception is raised' do
           begin
             client.should_not_receive(:abort_multipart_upload)
-            object.multipart_upload {|upload| raise Exception.new } 
+            object.multipart_upload {|upload| raise Exception.new }
           rescue Exception
             nil
           end
@@ -539,7 +617,7 @@ module AWS
           end
 
           it 'should be an object version with the returned version ID' do
-            resp.stub(:version_id).and_return("abc123")
+            resp.data[:version_id] = 'abc123'
             return_value.should be_an(ObjectVersion)
             return_value.config.should be(config)
             return_value.object.should be(object)
@@ -592,7 +670,7 @@ module AWS
           object.delete
         end
 
-        it 'should pass along additional options' do 
+        it 'should pass along additional options' do
           client.should_receive(:delete_object).
             with(:bucket_name => "foobucket", :key => "foo", :version_id => 'vid')
           object.delete(:version_id => 'vid')
@@ -602,10 +680,10 @@ module AWS
 
       context '#read' do
 
-        let(:response) { double("a response",
-                                :data => "HELLO") }
+        let(:response) { client.stub_for(:get_object) }
 
         before(:each) do
+          response.data[:data] = 'HELLO'
           client.stub(:get_object).and_return(response)
         end
 
@@ -615,8 +693,15 @@ module AWS
           object.read
         end
 
-        it 'should call get_object with the bucket name and key' do
+        it 'returns the object data from #get_object' do
           object.read.should == "HELLO"
+        end
+
+        it 'returns the #get_object response data if given a block' do
+          resp = object.read do |chunk|
+            # reading the data in chunks
+          end
+          resp.should be(response.data)
         end
 
       end
@@ -655,42 +740,42 @@ module AWS
 
       context '#etag' do
         it 'returns #etag from the head response' do
-          head = double('head-object-response', :etag => 'myetag')
+          head = { :etag => 'myetag' }
           client.stub(:head_object).and_return(head)
-          object.etag.should == 'myetag'
+          object.etag.should eq('myetag')
         end
       end
 
       context '#last_modified' do
         it 'returns #last_modified from the head response' do
-          head = double('head-object-response', :last_modified => Time.now)
+          now = Time.now
+          head = { :last_modified => now }
           client.stub(:head_object).and_return(head)
-          object.last_modified.should == head.last_modified
+          object.last_modified.should eq(now)
         end
       end
 
       context '#content_length' do
         it 'returns #content_length from the head response' do
-          head = double('head-object-response', :content_length => 123)
+          head = { :content_length => 123 }
           client.stub(:head_object).and_return(head)
-          object.content_length.should == 123
+          object.content_length.should eq(123)
         end
       end
 
       context '#content_type' do
         it 'returns #content_type from the head response' do
-          head = double('head-object-response', :content_type => 'text/plain')
+          head = { :content_type => 'text/plain' }
           client.stub(:head_object).and_return(head)
-          object.content_type.should == 'text/plain'
+          object.content_type.should eq('text/plain')
         end
       end
 
       context '#server_side_encryption' do
         it 'returns #server_side_encryption from the head response' do
-          head = double('head-object-response',
-                        :server_side_encryption => :aes256)
+          head = { :server_side_encryption => :aes256 }
           client.stub(:head_object).and_return(head)
-          object.server_side_encryption.should == :aes256
+          object.server_side_encryption.should eq(:aes256)
         end
       end
 
@@ -708,10 +793,41 @@ module AWS
 
       end
 
+      context '#restore_in_progress?' do
+        it 'returns true if the object is being restored' do
+          head = { :restore_in_progress => true }
+          client.stub(:head_object).and_return(head)
+          object.restore_in_progress?.should be(true)
+        end
+
+        it 'returns false if the object is not an archive copy' do
+          head = { :restore_in_progress => false }
+          client.stub(:head_object).and_return(head)
+          object.restore_in_progress?.should be(false)
+        end
+      end
+
+      context '#restore_expiration_date' do
+        it 'returns the expiration date if it is an archive copy' do
+          time = Time.now
+          head = { :restore_expiration_date => time }
+          client.stub(:head_object).and_return(head)
+          object.restore_expiration_date.should eq(time)
+        end
+      end
+
+      context '#restored_object?' do
+        it 'returns false if the object is not an archive copy' do
+          head = { :restore_expiration_date => nil }
+          client.stub(:head_object).and_return(head)
+          object.restored_object?.should be(false)
+        end
+      end
+
       context '#versions' do
 
         it 'returns a versioned object collection' do
-          object.versions.should be_an(ObjectVersionCollection) 
+          object.versions.should be_an(ObjectVersionCollection)
         end
 
       end
@@ -720,16 +836,16 @@ module AWS
 
         let(:http_request) { Request.new }
 
-        let(:signer) { 
-          double("signer",
+        let(:credential_provider) {
+          Core::CredentialProviders::StaticProvider.new({
             :access_key_id => "ACCESS_KEY",
-            :session_token => nil,
-            :sign => "SIGNATURE") 
+            :secret_access_key => "SECRET",
+          })
         }
 
         before(:each) do
           http_request.stub(:canonicalized_resource).and_return("/foo/bar")
-          config.stub(:signer).and_return(signer)
+          config.stub(:credential_provider).and_return(credential_provider)
           Request.stub(:new).and_return(http_request)
         end
 
@@ -762,29 +878,27 @@ module AWS
           object.url_for(:get)
         end
 
-        it 'should sign the request using SHA1' do
-          signer.should_receive(:sign).with(an_instance_of(String),
-                                            "sha1")
-          object.url_for(:get)
+        it 'should include the version id when provided' do
+          http_request.stub(:add_param)
+          http_request.should_receive(:add_param).
+            with('versionId', 'version-id-string')
+          object.url_for(:read, :version_id => 'version-id-string')
         end
 
         context 'federated sessions' do
 
-          before(:each) do
-            signer.stub(:session_token).and_return('session-token')
-          end
+          let(:credential_provider) {
+            Core::CredentialProviders::StaticProvider.new({
+              :access_key_id => "ACCESS_KEY",
+              :secret_access_key => "SECRET",
+              :session_token => "SESSION_TOKEN",
+            })
+          }
 
           it 'adds the security token to the request' do
             http_request.stub(:add_param)
             http_request.should_receive(:add_param).
-              with('x-amz-security-token', 'session-token')
-            object.url_for(:get)
-          end
-
-          it 'addes the security token to the string to sign' do
-            signer.should_receive(:sign).with do |string,type|
-              string.should =~ /x-amz-security-token:session-token/
-            end
+              with('x-amz-security-token', 'SESSION_TOKEN')
             object.url_for(:get)
           end
 
@@ -826,83 +940,23 @@ module AWS
         it_should_behave_like("presigned url request parameter",
                               :response_content_encoding, "response-content-encoding")
 
-        context 'string to sign' do
-
-          let(:string) do
-            sts = nil
-            signer.should_receive(:sign) do |string, digest|
-              sts = string
-            end
-            object.url_for(*args)
-            sts
-          end
-
-          let(:lines) { string.split("\n", -1) }
-
-          let(:args) { [:get] }
-
-          it 'should have GET on the first line by default' do
-            lines.first.should == "GET"
-          end
-
-          it 'should accept a symbol HTTP method name' do
-            args.replace([:put])
-            lines.first.should == "PUT"
-          end
-
-          it 'should accept a string HTTP method name' do
-            args.replace(["PUT"])
-            lines.first.should == "PUT"
-          end
-
-          it 'should interpret :read as GET' do
-            args.replace([:read])
-            lines.first.should == "GET"
-          end
-
-          it 'should interpret :write as PUT' do
-            args.replace([:write])
-            lines.first.should == "PUT"
-          end
-
-          it 'should have 2 blank lines after the first one by default' do
-            lines[1,2].should == [""] * 2
-          end
-
-          it 'should expire in one hour by default' do
-            Time.stub(:now).and_return(Time.parse("2011-05-23 17:34:48 -0700"))
-            lines[3].should == Time.parse("2011-05-23 18:34:48 -0700").to_i.to_s
-          end
-
-          it 'should have the canonicalized resource on the last line' do
-            lines.last.should == "/foo/bar"
-          end
-
-          it 'should not end with a newline' do
-            string[-1].should_not == "\n"
-          end
-
-        end
 
         it 'should add a parameter for the access key' do
           object.url_for(:get).query.split("&").
             should include("AWSAccessKeyId=ACCESS_KEY")
         end
 
-        it 'should add a parameter for the signature' do
-          object.url_for(:get).query.split("&").
-            should include("Signature=SIGNATURE")
-        end
-
-        it 'should add a parameter for the signature' do
-          object.url_for(:get).query.split("&").
-            should include("Signature=SIGNATURE")
-        end
-
         it 'should add a parameter for the expiration timestamp' do
           Time.stub(:now).and_return(Time.parse("2011-05-23 17:39:04 -0700"))
           object.url_for(:get).query.split("&").
             should include("Expires=1306201144")
+        end
+
+        it 'should accept an object that responds to #to_int' do
+          Time.stub(:now).and_return(10)
+          seconds = double('seconds', :to_int => 10)
+          object.url_for(:get, :expires => seconds).
+            query.split("&").should include("Expires=20")
         end
 
         it 'should accept a Time object for :expires' do
@@ -943,8 +997,51 @@ module AWS
           object.url_for(:get).query.should == "something=itsvalue"
         end
 
-      end
+        it 'should default to the general use_ssl parameter for urls' do
+          config.stub(:use_ssl?).and_return true
+          object.url_for(:get).scheme.should == "https"
+          config.stub(:use_ssl?).and_return false
+          object.url_for(:get).scheme.should == "http"
+        end
 
+        it 'should prefer :secure over the general use_ssl parameter for urls' do
+          config.stub(:use_ssl?).and_return true
+          object.url_for(:get, :secure => false).scheme.should == "http"
+          config.stub(:use_ssl?).and_return false
+          object.url_for(:get, :secure => true).scheme.should == "https"
+        end
+
+        it 'should default to the :s3_port value for urls' do
+          config.stub(:s3_port).and_return nil
+          object.url_for(:get).port.should == 443
+          config.stub(:s3_port).and_return 8080
+          object.url_for(:get).port.should == 8080
+        end
+
+        it 'should prefer :port over the general :s3_port parameter for urls' do
+          config.stub(:s3_port).and_return 8080
+          object.url_for(:get, :port => 80).port.should == 80
+        end
+
+        it 'should default to the general :s3_force_path_style value for urls' do
+          config.stub(:s3_force_path_style).and_return false
+          url = object.url_for(:get)
+          url.host.should == "foobucket.s3.amazonaws.com"
+          url.path.should_not =~ /^\/foobucket\//
+
+          config.stub(:s3_force_path_style).and_return true
+          url = object.url_for(:get)
+          url.host.should == "s3.amazonaws.com"
+          url.path.should =~ /^\/foobucket\//
+        end
+
+        it 'should prefer :force_path_style over the general :s3_force_path_style parameter for urls' do
+          config.stub(:s3_force_path_style).and_return true
+          url = object.url_for(:get, :force_path_style => false)
+          url.host.should == "foobucket.s3.amazonaws.com"
+          url.path.should_not =~ /^\/foobucket\//
+        end
+      end
 
       context '#public_url' do
 

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,57 +11,80 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+require 'thread'
+
 module AWS
   module Core
 
-    # @private
+    # Provides lazy creation of error classes via {#const_missing}.
+    #
+    # Extend this module provides 3 benefits to another module:
+    #
+    # * A method that accepts strings and returns error classes.
+    # * Thread-safe dynamic error class creation via {#const_missing}
+    # * An error grammar for parsing AWS xml errors
+    #
+    # Here is an example of how it works:
+    #
+    #     Class Foo
+    #       module Errors
+    #         extend AWS::Core::LazyErrorClasses
+    #       end
+    #     end
+    #
+    #     Foo::Errors.error_class('NoSuchKey')
+    #     #=> Foo::Errors::NoSuckKey
+    #
+    #     Foo::Errors.error_class('Nested.Error.Klasses')
+    #     #=> Foo::Errors::Nested::Error::Klasses
+    #
+    # The errors returned from {#error_class} are subclasses
+    # of {AWS::Errors::Base}.
+    #
     module LazyErrorClasses
-  
-      # @private
-      module ClassMethods
-  
-        def const_missing(name)
-          base_error_grammar = self::BASE_ERROR_GRAMMAR
-          mod = self::ERROR_MODULE
-          const_missing_mutex.synchronize do
-            return if const_defined?(name)
-            const_set(name,
-                      Class.new(self::Base) do
-                        include mod::ModeledError
 
-                        # so that MyService::Errors::Foo::Bar will work
-                        const_set(:BASE_ERROR_GRAMMAR, base_error_grammar)
-                        const_set(:ERROR_MODULE, mod)
-                        include LazyErrorClasses
-                      end)
-          end
+      # This grammar parses the defualt AWS XML error format
+      BASE_ERROR_GRAMMAR = XML::Grammar.customize do
+        element("Error") do
+          ignore
         end
-  
-        def error_class(code)
-          module_eval(code.gsub(".","::"))
-        end
-  
-        def included(mod)
-          raise NotImplementedError.new("#{self} lazy-generates error classes; "+
-                                        "therefore it is not suitable for "+
-                                        "inclusion in other modules")
-        end
-  
       end
-  
-      def self.included(mod)
-        unless mod.const_defined?(:BASE_ERROR_GRAMMAR)
-          mod.const_set(:BASE_ERROR_GRAMMAR, XmlGrammar)
+
+      # @api private
+      def self.extended base
+
+        unless base.const_defined?(:GRAMMAR)
+          base.const_set(:GRAMMAR, BASE_ERROR_GRAMMAR)
         end
-        unless mod.const_defined?(:ERROR_MODULE)
-          mod.const_set(:ERROR_MODULE, mod)
-        end
+
         mutex = Mutex.new
-        MetaUtils.extend_method(mod, :const_missing_mutex) { mutex }
-        mod.send(:include, Errors)
-        mod.extend(ClassMethods)
+        MetaUtils.extend_method(base, :const_missing_mutex) { mutex }
+
       end
-  
+
+      # Defines a new error class.
+      # @param [String,Symbol] constant
+      # @return [nil]
+      def const_missing constant
+        const_missing_mutex.synchronize do
+          const_set(constant, Class.new(Errors::Base) { extend LazyErrorClasses })
+        end
+      end
+
+      # Converts the error code into an error class constant.
+      #
+      #     AWS::EC2::Errors.error_class('Non.Existent.Error')
+      #     #=> AWS::EC2::Errors::Non::Existent::Error
+      #
+      # @param [String] code An AWS error code.
+      #
+      # @return [Class] Returns the error class defiend by the error code.
+      #
+      def error_class code
+        module_eval("#{self}::#{code.gsub('.Range','Range').gsub(".","::")}")
+      end
+
     end
+
   end
 end

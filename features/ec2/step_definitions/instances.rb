@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,16 +27,28 @@ When /^I request to run an instance with the following parameters:$/ do |table|
     opts[:security_groups] = [opts[:security_groups]]
   end
 
-  if @run_in_vpc
-    opts[:subnet_id] = @subnet_id
+  opts[:subnet] = @subnet if @run_in_vpc
+
+  begin
+    @instance = @result = @ec2.instances.create(opts)
+    @started_instances << @instance
+  rescue => e
+    @error = e
+    puts e.message
   end
-
-  @instance = @result = @ec2.instances.create(opts)
-
-  @started_instances << @instance.id
 
   sleep 0.1
 end
+
+
+Given /^I request to run vpc instance in the subnet$/ do
+  opts = {}
+  opts[:subnet] = @subnet
+  opts[:image_id] = 'ami-8c1fece5'
+  @instance = @ec2.instances.create(opts)
+  @started_instances << @instance
+end
+
 
 When /^I request to run between (\d+) and (\d+) instances with the following parameters:$/ do |min, max, table|
   opts = {}
@@ -45,20 +57,20 @@ When /^I request to run between (\d+) and (\d+) instances with the following par
   end
   @instances = @result =
     @ec2.instances.create(opts.merge(:count => (min.to_i)..(max.to_i)))
-  @started_instances += @instances.map { |i| i.id }
+  @started_instances += @instances
 end
 
 When /^I request to run an instance of "([^\"]*)" with the following block device mappings:$/ do |ami_id, string|
   mappings = eval(string)
   @instance = @result = @ec2.instances.create(:image_id => ami_id,
                                               :block_device_mappings => mappings)
-  @started_instances << @instance.id
+  @started_instances << @instance
 end
 
 Given /^I request to run an instance of "([^\"]*)" using the key pair$/ do |image_id|
   @instance = @result = @ec2.instances.create(:image_id => image_id,
                                               :key_pair => @key_pair)
-  @started_instances << @instance.id
+  @started_instances << @instance
 end
 
 Then /^The result should be an instance object$/ do
@@ -89,7 +101,7 @@ Then /^the instance I started should be in the list$/ do
 end
 
 Given /^I wait for the instance status to be "([^\"]*)"$/ do |status|
-  Given %(the instance status should eventually be "#{status}")
+  step %(the instance status should eventually be "#{status}")
 end
 
 When /^I reboot the instance$/ do
@@ -134,3 +146,9 @@ end
 When /^I get the instance status$/ do
   @result = @instance.status
 end
+
+Then /^an error should have been raise with a message like$/ do |pattern|
+  @error.should be_a(StandardError)
+  @error.message.should match(pattern)
+end
+

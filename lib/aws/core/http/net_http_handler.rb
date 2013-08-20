@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,67 +11,131 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-require 'net/http/connection_pool'
-
 module AWS
   module Core
     module Http
-  
-      # The default http request handler for the aws-sdk gem.  It is based
-      # on Net::Http.
+
+      # # NetHttpHandler
+      #
+      # This is the default HTTP handler for the aws-sdk gem.  It uses
+      # Ruby's Net::HTTP to make requests.  It uses persistent connections
+      # and a connection pool.
+      #
       class NetHttpHandler
 
-        @@pool = Net::HTTP::ConnectionPool.new
+        class TruncatedBodyError < IOError; end
+        
+        # @api private
+        NETWORK_ERRORS = [
+          SocketError, EOFError, IOError, Timeout::Error,
+          Errno::ECONNABORTED, Errno::ECONNRESET, Errno::EPIPE,
+          Errno::EINVAL, Errno::ETIMEDOUT, OpenSSL::SSL::SSLError
+        ]
 
-        # @private
-        def self.pool
-          @@pool
+        # (see ConnectionPool.new)
+        def initialize options = {}
+          @pool = ConnectionPool.new(options)
+          @verify_content_length = options[:verify_response_body_content_length]
         end
-  
-        def handle request, response
 
-          options = {}
-          options[:ssl] = request.use_ssl?
-          options[:proxy_uri] = request.proxy_uri
-          options[:ssl_verify_peer] = request.ssl_verify_peer?
-          options[:ssl_ca_file] = request.ssl_ca_file
+        # @return [ConnectionPool]
+        attr_reader :pool
 
-          connection = self.class.pool.connection_for(request.host, options)
+        # Given a populated request object and an empty response object,
+        # this method will make the request and them populate the
+        # response.
+        # @param [Request] request
+        # @param [Response] response
+        # @return [nil]
+        def handle request, response, &read_block
+          retry_possible = true
 
           begin
-            http_response = connection.request(build_request(request))
-            response.body = http_response.body
-            response.status = http_response.code.to_i
-            response.headers = http_response.to_hash
-          rescue Timeout::Error, Errno::ETIMEDOUT => e
-            response.timeout = true
-          end
 
+            @pool.session_for(request.endpoint) do |http|
+
+              http.read_timeout = request.read_timeout
+              http.continue_timeout = request.continue_timeout if
+                http.respond_to?(:continue_timeout=)
+
+              http.request(build_net_http_request(request)) do |net_http_resp|
+                response.status = net_http_resp.code.to_i
+                response.headers = net_http_resp.to_hash
+                exp_length = determine_expected_content_length(response)
+                act_length = 0
+                begin
+                  if block_given? and response.status < 300
+                    net_http_resp.read_body do |data|
+                      begin
+                        act_length += data.bytesize
+                        yield data
+                      ensure
+                        retry_possible = false
+                      end
+                    end
+                  else
+                    response.body = net_http_resp.read_body
+                    act_length += response.body.bytesize unless response.body.nil?
+                  end
+                ensure
+                  run_check = exp_length.nil? == false && request.http_method != "HEAD" && @verify_content_length
+                  if run_check && act_length != exp_length
+                    raise TruncatedBodyError, 'content-length does not match'
+                  end
+                end
+              end
+
+            end
+
+          rescue *NETWORK_ERRORS => error
+            raise error unless retry_possible
+            response.network_error = error
+          end
+          nil
         end
 
-        # @private
         protected
-        def build_request request
 
-          # Net::HTTP adds a content-type header automatically unless its set
-          # and this messes with request signature signing.  Also, it expects
-          # all header values to be strings (it call strip on them).
-          headers = { 'content-type' => '' }
+        def determine_expected_content_length response
+          if header = response.headers['content-length']
+            if header.is_a?(Array)
+              header.first.to_i
+            end
+          end
+        end
+
+        # Given an AWS::Core::HttpRequest, this method translates
+        # it into a Net::HTTPRequest (Get, Put, Post, Head or Delete).
+        # @param [Request] request
+        # @return [Net::HTTPRequest]
+        def build_net_http_request request
+
+          # Net::HTTP adds a content-type (1.8.7+) and accept-encoding (2.0.0+)
+          # to the request if these headers are not set.  Setting a default
+          # empty value defeats this.
+          #
+          # Removing these are necessary for most services to no break request
+          # signatures as well as dynamodb crc32 checks (these fail if the
+          # response is gzipped).
+          headers = { 'content-type' => '', 'accept-encoding' => '' }
+
           request.headers.each_pair do |key,value|
             headers[key] = value.to_s
           end
 
-          req_class = case request.http_method
+          request_class = case request.http_method
             when 'GET'    then Net::HTTP::Get
             when 'PUT'    then Net::HTTP::Put
             when 'POST'   then Net::HTTP::Post
             when 'HEAD'   then Net::HTTP::Head
             when 'DELETE' then Net::HTTP::Delete
-            else raise "unsupported http method: #{request.http_method}"
-          end
+            else
+              msg = "unsupported http method: #{request.http_method}"
+              raise ArgumentError, msg
+            end
 
-          net_http_req = req_class.new(request.uri, headers)
-          net_http_req.body = request.body
+          net_http_req = request_class.new(request.uri, headers)
+          net_http_req.body_stream = request.body_stream
           net_http_req
 
         end

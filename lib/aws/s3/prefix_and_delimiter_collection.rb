@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,7 +14,7 @@
 module AWS
   class S3
 
-    # @private
+    # @api private
     module PrefixAndDelimiterCollection
 
       include PrefixedCollection
@@ -24,16 +24,16 @@ module AWS
         Tree.new(self, { :prefix => prefix }.merge(options))
       end
 
-      # @private
+      # @api private
       protected
       def each_member_in_page(page, &block)
         super
         page.common_prefixes.each do |p|
-          yield(with_prefix(p))
+          yield(with_prefix(p[:prefix]))
         end
       end
 
-      # @private
+      # @api private
       protected
       def list_options(options)
         opts = super

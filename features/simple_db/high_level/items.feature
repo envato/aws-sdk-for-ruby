@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -46,6 +46,7 @@ Feature: SimpleDB Items
   @multibyte
   Scenario: Adding multibyte character values
     When I add the value "\xE1\x88\xB4" to the "att1" attribute of "car"
+    #When I add a multibyte character value to the "att1" attribute of "car"
     Then the "att1" attribute of "car" item should eventually be "\xE1\x88\xB4"
 
   @conditional
@@ -61,8 +62,8 @@ Feature: SimpleDB Items
     | TYPE  | NAME              | VALUE         |
     | param | Action            | PutAttributes |
     | param | Attribute.1.Value | green         |
-    | param | Expected.1.Name   | foo           |
-    | param | Expected.1.Value  | bar           |
+    | param | Expected.Name     | foo           |
+    | param | Expected.Value    | bar           |
 
   @conditional
   Scenario: Adding values one at a time with an expected no value for an attribute
@@ -77,8 +78,8 @@ Feature: SimpleDB Items
     | TYPE  | NAME              | VALUE         |
     | param | Action            | PutAttributes |
     | param | Attribute.1.Value | green         |
-    | param | Expected.1.Name   | foo           |
-    | param | Expected.1.Exists | false         |
+    | param | Expected.Name     | foo           |
+    | param | Expected.Exists   | false         |
 
   Scenario: Adding multiple values at the same time
     When I add the following values to the "colors" attribute of "car"
@@ -101,7 +102,7 @@ Feature: SimpleDB Items
     When I set the "colors" attribute of "car" to "blue":
     Then the "colors" attribute of "car" item should eventually be:
     | value |
-    | blue  | 
+    | blue  |
     And a request should have been made like:
     | TYPE  | NAME                | VALUE         |
     | param | Action              | PutAttributes |
@@ -126,8 +127,8 @@ Feature: SimpleDB Items
     | param | Attribute.1.Name    | colors        |
     | param | Attribute.1.Value   | blue          |
     | param | Attribute.1.Replace | true          |
-    | param | Expected.1.Name     | foo           |
-    | param | Expected.1.Value    | bar           |
+    | param | Expected.Name       | foo           |
+    | param | Expected.Value      | bar           |
 
   @conditional
   Scenario: Replacing values on a single attribute expecting no value for an attribute
@@ -146,8 +147,8 @@ Feature: SimpleDB Items
     | param | Attribute.1.Name    | colors        |
     | param | Attribute.1.Value   | blue          |
     | param | Attribute.1.Replace | true          |
-    | param | Expected.1.Name     | foo           |
-    | param | Expected.1.Exists   | false         |
+    | param | Expected.Name       | foo           |
+    | param | Expected.Exists     | false         |
 
   Scenario: Replacing values on multiple attributes
     Given I add the following attributes to "car"
@@ -200,8 +201,8 @@ Feature: SimpleDB Items
     And I add the value "100" to the "price" attribute of "car"
     Then the "car" item should eventually have attributes named:
     | name   |
-    | colors | 
-    | price  | 
+    | colors |
+    | price  |
 
   Scenario: Deleting an item
     Given I add the following values to the "colors" attribute of "car"

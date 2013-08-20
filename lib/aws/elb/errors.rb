@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,15 +13,11 @@
 
 module AWS
   class ELB
-
-    # @private
     module Errors
 
-      BASE_ERROR_GRAMMAR = Client::XML::BaseError
+      extend Core::LazyErrorClasses
 
-      include Core::LazyErrorClasses
-
-      def self.error_class(code)
+      def self.error_class code
         super(code.sub(/^ElasticLoadBalancing\./, ''))
       end
 

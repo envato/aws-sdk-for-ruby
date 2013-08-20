@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
 # the License is located at
@@ -14,7 +14,7 @@ module AWS
   class IAM
     module Collection
 
-      include Core::Collection::Limitable
+      include Core::Collection::WithLimitAndNextToken
 
       # Common methods for collection classes that can be filtered by
       # a path prefix.
@@ -26,7 +26,7 @@ module AWS
         #   filtered.
         attr_reader :prefix
 
-        # @private
+        # @api private
         def initialize options = {}
           @prefix = options[:prefix]
           super
@@ -46,7 +46,7 @@ module AWS
 
         protected
         def _each_item marker, max_items, options = {}, &block
-            
+
           prefix = options.delete(:prefix) || self.prefix
 
           options[:path_prefix] = "/#{prefix}".sub(%r{^//}, "/") if prefix
@@ -70,9 +70,10 @@ module AWS
         options[:max_items] = max_items if max_items
 
         response = client.send(request_method, options)
+
         each_item(response, &block)
 
-        response.marker if response.respond_to?(:marker)
+        response.data[:marker]
 
       end
 

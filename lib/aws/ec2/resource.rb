@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,10 +14,10 @@
 module AWS
   class EC2
 
-    # @private
+    # @api private
     class Resource < Core::Resource
 
-      # @private
+      # @api private
       protected
       def resource_identifiers
         [[resource_id_method, send(resource_id_method)]]
@@ -52,7 +52,7 @@ module AWS
       end
 
       protected
-      def get_resource attribute
+      def get_resource attribute = nil
         describe_call
       end
 
@@ -76,7 +76,7 @@ module AWS
       def describe_attribute_call(attribute)
         name = describe_attribute_call_name
 
-        attr_opt_name = Core::Inflection.class_name(attribute.get_as.to_s)
+        attr_opt_name = Core::Inflection.class_name(attribute.from.to_s)
         attr_opt_name = attr_opt_name[0,1].downcase + attr_opt_name[1..-1]
 
         client.send(name, Hash[[[response_id_method.to_sym,
@@ -87,7 +87,11 @@ module AWS
       protected
       def update_resource attribute, value
         options = {}
-        options[attribute.set_as] = { :value => value }
+        if value.is_a?(Array)
+          options[attribute.set_as] = value
+        else
+          options[attribute.set_as] = { :value => value }
+        end
         options[:"#{inflected_name}_id"] = __resource_id__
         method_name = "modify_#{inflected_name}_attribute"
         client.send(method_name, options)
@@ -143,7 +147,7 @@ module AWS
 
       class << self
 
-        # @private
+        # @api private
         protected
         def describe_call_attribute(name, opts = {}, &blk)
           attribute(name, opts, &blk)

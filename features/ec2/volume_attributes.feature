@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ Feature: Volume attributes
     Given I create a volume with the following parameters:
     | parameter         | value      |
     | size              | 1          |
-    | availability_zone | us-east-1a |
+    | availability_zone | us-east-1b |
     Then the volume size should be 1
 
   Scenario: Get volume snapshot ID
@@ -35,8 +35,8 @@ Feature: Volume attributes
     Given I create a volume with the following parameters:
     | parameter         | value      |
     | size              | 1          |
-    | availability_zone | us-east-1a |
-    Then the volume availability zone should be "us-east-1a"
+    | availability_zone | us-east-1b |
+    Then the volume availability zone should be "us-east-1b"
 
   Scenario: Get volume create time
     Given I create a volume

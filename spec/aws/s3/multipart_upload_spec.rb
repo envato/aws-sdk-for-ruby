@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -391,6 +391,22 @@ module AWS
             upload.complete
           end
 
+          it 'returns an S3Object when version_id is not present' do
+            resp = client.stub_for(:complete_multipart_upload)
+            client.stub(:complete_multipart_upload).and_return(resp)
+            upload.complete.should be(upload.object)
+          end
+
+          it 'returns an ObjectVersion when version_id is present' do
+            resp = client.stub_for(:complete_multipart_upload)
+            resp.data[:version_id] = 'version-id'
+            client.stub(:complete_multipart_upload).and_return(resp)
+            obj = upload.complete
+            obj.should be_a(ObjectVersion)
+            obj.object.should be(upload.object)
+            obj.version_id.should eq('version-id')
+          end
+
           context 'no parts uploaded' do
 
             it 'should raise an error' do
@@ -423,7 +439,8 @@ module AWS
             client.should_receive(:list_parts).
               with(:bucket_name => "foobucket",
                    :key => "foo",
-                   :upload_id => "abc123").
+                   :upload_id => "abc123",
+                   :max_parts => 1000).
               and_return(resp)
             upload.complete(:remote_parts)
           end
@@ -476,7 +493,8 @@ module AWS
             client.should_receive(:list_parts).
               with(:bucket_name => "foobucket",
                    :key => "foo",
-                   :upload_id => "abc123").
+                   :upload_id => "abc123",
+                   :max_parts => 1000).
               and_return(resp)
             upload.complete(1, 3)
           end

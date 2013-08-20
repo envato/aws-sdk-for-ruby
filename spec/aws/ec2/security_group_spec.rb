@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -33,29 +33,47 @@ module AWS
       let(:instance) { group }
 
       def stub_member(resp, member)
-        stub_response_group(resp, member.group_id, member)
+        stub_response_group(resp, member[:group_id], member)
       end
 
       it_should_behave_like "a tagged ec2 item" do
         let(:taggable) { group }
         def stub_tags(resp, tags)
-          stub_member(resp,
-                      double("group",
-                             :group_id => "id",
-                             :tag_set => tags))
+          stub_member(resp, { :group_id => "id", :tag_set => tags })
         end
       end
 
       def stub_response_group(resp, id, group)
-        resp.stub(:security_group_index).
-          and_return(Hash[[[id, group]]])
+        resp.data[:security_group_index] = { id => group }
+      end
+
+      context '#instances' do
+
+        it 'returns a filtered instance collection' do
+          group.stub(:vpc?).and_return(false)
+          group.instances.should be_a(InstanceCollection)
+          group.instances.config.should eq(config)
+          client.should_receive(:describe_instances).
+            with(:filters => [{:name => 'group-id',:values => [group.id]}]).
+            and_return(client.stub_for(:describe_instances))
+          group.instances.each {|i|}
+        end
+
+        it 'filteres differently for vpc security groups' do
+          group.stub(:vpc?).and_return(true)
+          client.should_receive(:describe_instances).
+            with(:filters => [{:name => 'instance.group-id',:values => [group.id]}]).
+            and_return(client.stub_for(:describe_instances))
+          group.instances.each {|i|}
+        end
+
       end
 
       context '#exists?' do
         let(:describe_call) { :describe_security_groups }
         let(:id_filter) { "group-id" }
         def stub_exists(resp)
-          stub_response_group(resp, resource.id, double("security group"))
+          stub_response_group(resp, resource.id, {})
         end
         it_should_behave_like "ec2 resource exists method"
       end
@@ -91,7 +109,7 @@ module AWS
                 :ip_ranges => [
                   { :cidr_ip => '0.0.0.0/0' },
                   { :cidr_ip => '1.1.1.1/1' },
-                ] 
+                ]
               }
             ])
           group.send(method, 'TCP', 22, '0.0.0.0/0', '1.1.1.1/1')
@@ -103,7 +121,7 @@ module AWS
               { :ip_protocol => 'tcp', :from_port => 22, :to_port => 22,
                 :user_id_group_pairs => [
                   { :group_id => 'foo', :user_id => 'bar' },
-                ] 
+                ]
               }
             ])
           g1 = SecurityGroup.new('foo', :owner_id => 'bar')
@@ -116,7 +134,7 @@ module AWS
               { :ip_protocol => 'tcp', :from_port => 22, :to_port => 22,
                 :user_id_group_pairs => [
                   { :group_id => 'foo', :user_id => 'bar' },
-                ] 
+                ]
               }
             ])
           group.send(method, 'TCP', 22,
@@ -130,6 +148,11 @@ module AWS
         before(:each) do
           client.stub(client_method).and_return(client.stub_for(client_method))
           group.stub(:vpc_id).and_return('vpc-123')
+        end
+
+        it 'returns a vpc' do
+          group.vpc.should == VPC.new('vpc-123')
+          group.vpc.config.should == group.config
         end
 
         it 'accepts ranges for ports and defaults ip ranges to 0.0.0.0/0' do
@@ -156,7 +179,7 @@ module AWS
               { :ip_protocol => '-1', :ip_ranges => [
                   { :cidr_ip => '0.0.0.0/0' },
                   { :cidr_ip => '1.1.1.1/1' },
-                ] 
+                ]
               }
             ])
           group.send(method, '0.0.0.0/0', '1.1.1.1/1')
@@ -165,10 +188,10 @@ module AWS
         it 'accepts groups' do
           client.should_receive(client_method).
             with(:group_id => 'id', :ip_permissions => [
-              { :ip_protocol => '-1', 
+              { :ip_protocol => '-1',
                 :user_id_group_pairs => [
                   { :group_id => 'foo', :user_id => 'bar' },
-                ] 
+                ]
               }
             ])
           g1 = SecurityGroup.new('foo', :owner_id => 'bar')
@@ -178,10 +201,10 @@ module AWS
         it 'accepts group hashes with a group_id' do
           client.should_receive(client_method).
             with(:group_id => 'id', :ip_permissions => [
-              { :ip_protocol => '-1', 
+              { :ip_protocol => '-1',
                 :user_id_group_pairs => [
                   { :group_id => 'foo' },
-                ] 
+                ]
               }
             ])
           group.send(method, { :group_id => 'foo' })
@@ -190,10 +213,10 @@ module AWS
         it 'accepts group hashes with a group_name' do
           client.should_receive(client_method).
             with(:group_id => 'id', :ip_permissions => [
-              { :ip_protocol => '-1', 
+              { :ip_protocol => '-1',
                 :user_id_group_pairs => [
                   { :group_name => 'foo' },
-                ] 
+                ]
               }
             ])
           group.send(method, { :group_name => 'foo', })
@@ -202,10 +225,10 @@ module AWS
         it 'accepts group hashes with a group_id and user_id' do
           client.should_receive(client_method).
             with(:group_id => 'id', :ip_permissions => [
-              { :ip_protocol => '-1', 
+              { :ip_protocol => '-1',
                 :user_id_group_pairs => [
                   { :group_id => 'foo', :user_id => 'bar' },
-                ] 
+                ]
               }
             ])
           group.send(method, { :group_id => 'foo', :user_id => 'bar' })
@@ -214,10 +237,10 @@ module AWS
         it 'accepts group hashes with a group_name and user_id' do
           client.should_receive(client_method).
             with(:group_id => 'id', :ip_permissions => [
-              { :ip_protocol => '-1', 
+              { :ip_protocol => '-1',
                 :user_id_group_pairs => [
                   { :group_name => 'foo', :user_id => 'bar' },
-                ] 
+                ]
               }
             ])
           group.send(method, { :group_name => 'foo', :user_id => 'bar' })
@@ -226,14 +249,14 @@ module AWS
         it 'raises an error for missing group' do
           lambda {
             # must provide :group_id or :group_name
-            group.send(method, { :user_id => 'bar' }) 
+            group.send(method, { :user_id => 'bar' })
           }.should raise_error(ArgumentError, /provide :group_id or :group_name/)
         end
 
         it 'raises an error for unknown group keys' do
           lambda {
             # intentional typo
-            group.send(method, { :group_id => 'foo', :usr_id => 'typo' }) 
+            group.send(method, { :group_id => 'foo', :usr_id => 'typo' })
           }.should raise_error(ArgumentError, /only accepts the following keys/)
         end
 
@@ -242,18 +265,18 @@ module AWS
           load_balancer = ELB::LoadBalancer.new('lb-name')
           load_balancer.stub(:source_security_group).
             and_return(
-              :group_name => 'lb-group-name', 
+              :group_name => 'lb-group-name',
               :user_id => 'lb-owner-alias')
 
           client.should_receive(client_method).
             with(:group_id => 'id', :ip_permissions => [
-              { :ip_protocol => '-1', 
+              { :ip_protocol => '-1',
                 :user_id_group_pairs => [
-                  { 
+                  {
                     :group_name => 'lb-group-name',
                     :user_id => 'lb-owner-alias'
                   },
-                ] 
+                ]
               }
             ])
 
@@ -298,11 +321,11 @@ module AWS
         it 'calls describe_security_groups to get the name' do
 
           response = client.new_stub_for(:describe_security_groups)
-          stub_response_group(response, "id",
-                              double('grp1',
-                                     :group_name => 'name', 
-                                     :owner_id => 'abc', 
-                                     :group_description => 'xyz'))
+          stub_response_group(response, "id", {
+            :group_name => 'name',
+            :owner_id => 'abc',
+            :group_description => 'xyz',
+          })
 
           client.should_receive(:describe_security_groups).
             with(:group_ids => ['id']).
@@ -317,7 +340,7 @@ module AWS
             SecurityGroup.new('id', :config => config).name
           }.should raise_error(/unable to find the security group/)
         end
-        
+
       end
 
       context '#owner_id' do
@@ -330,11 +353,11 @@ module AWS
         it 'calls describe_security_groups to get the owner_id' do
 
           response = client.stub_for(:describe_security_groups)
-          stub_response_group(response, "id",
-                              double('grp1',
-                                     :group_name => 'name',
-                                     :owner_id => 'abc',
-                                     :group_description => 'xyz'))
+          stub_response_group(response, "id", {
+            :group_name => 'name',
+            :owner_id => 'abc',
+            :group_description => 'xyz',
+          })
 
           client.should_receive(:describe_security_groups).
             with(:group_ids => ['id']).
@@ -363,11 +386,11 @@ module AWS
         it 'calls describe_security_groups to get the desc when missing' do
 
           response = client.stub_for(:describe_security_groups)
-          stub_response_group(response, "id",
-                              double('grp1',
-                                     :group_name => 'name',
-                                     :owner_id => 'abc',
-                                     :group_description => 'xyz'))
+          stub_response_group(response, "id", {
+            :group_name => 'name',
+            :owner_id => 'abc',
+            :group_description => 'xyz'
+          })
 
           client.should_receive(:describe_security_groups).
             with(:group_ids => ['id']).
@@ -443,6 +466,17 @@ module AWS
           collection.security_group.should be(group)
           collection.config.should be(config)
         end
+      end
+
+      context '#<=>' do
+
+        it 'sorts security groups by their ids' do
+          g1 = SecurityGroup.new('a')
+          g2 = SecurityGroup.new('b')
+          g3 = SecurityGroup.new('c')
+          [g3,g2,g1].sort.should eq([g1, g2, g3])
+        end
+
       end
 
       context '#delete' do

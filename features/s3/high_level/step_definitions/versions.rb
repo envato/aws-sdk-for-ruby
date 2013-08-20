@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,11 +14,13 @@
 include AWS
 
 When /^I enable versioning on the bucket$/ do
+  sleep(0.5)
   @bucket.enable_versioning
   sleep(0.5)
 end
 
 When /^I suspend versioning on the bucket$/ do
+  sleep(0.5)
   @bucket.suspend_versioning
   sleep(0.5)
 end
@@ -28,15 +30,21 @@ When /^the object should have a version_id$/ do
 end
 
 When /^the bucket should be versioned$/ do
-  @bucket.versioned?.should == true
+  eventually do
+    @bucket.versioned?.should == true
+  end
 end
 
 When /^the bucket should not be versioned$/ do
-  @bucket.versioned?.should == false
+  eventually do
+    @bucket.versioned?.should == false
+  end
 end
 
 When /^the bucket versioning state should be "([^"]*)"$/ do |state|
-  @bucket.versioning_state.should == state.to_sym
+  eventually do
+    @bucket.versioning_state.should == state.to_sym
+  end
 end
 
 Then /^there should be (\d+) versions for the object$/ do |count|

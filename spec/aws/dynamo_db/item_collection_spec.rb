@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -613,6 +613,16 @@ module AWS
               and_return("FOO")
             items.query(:hash_value => "hash",
                         :select => ["foo", "bar"]).should == "FOO"
+          end
+
+          it 'should also accept :attributes_to_get' do
+            items.stub(:enumerator).
+              with(hash_including(
+                :attributes_to_get => ["foo", "bar"],
+                :item_data => true)).
+              and_return("FOO")
+            items.query(:hash_value => "hash",
+                        :attributes_to_get => ["foo", "bar"]).should == "FOO"
           end
 
           it 'should work for symbol attribute names' do

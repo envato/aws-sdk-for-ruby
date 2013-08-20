@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,8 +28,8 @@ module AWS
 
         let(:access_keys) { AccessKeyCollection.new(:user => user) }
 
-        context '#user' do 
-          
+        context '#user' do
+
           it 'returns the user passed to #new' do
             access_keys.user.should == user
           end
@@ -47,22 +47,23 @@ module AWS
         context '#create' do
 
           let(:response) { client.stub_for(:create_access_key) }
-          
+
           before(:each) do
 
-            key = double('response-access-key', 
+            key = {
               :access_key_id => 'id',
               :secret_access_key => 'secret',
-              :status => 'Active')
+              :status => 'Active',
+            }
 
-            response.stub(:access_key).and_return(key)
+            response.data[:access_key] = key
 
             client.stub(:create_access_key).and_return(response)
 
           end
-          
+
           it 'calls create_access_key on the client' do
-            
+
             client.should_receive(:create_access_key).
               with(:user_name => user.name).
               and_return(response)
@@ -85,14 +86,15 @@ module AWS
         context '#[]' do
 
           let(:response) { client.stub_for(:list_access_keys) }
-          
+
           before(:each) do
-            response.stub(:access_key_metadata).and_return([
-              double('response-access-key', 
-                :access_key_id => 'id', 
+            response.data[:access_key_metadata] = [
+              {
+                :access_key_id => 'id',
                 :user_name => user.name,
-                :status => 'Active')
-            ])
+                :status => 'Active',
+              }
+            ]
             client.stub(:list_access_keys).and_return(response)
           end
 
@@ -114,7 +116,7 @@ module AWS
               access_key.secret
             }.should raise_error(/only available for new access keys/)
           end
-          
+
         end
 
         it_behaves_like "a pageable collection with limits" do
@@ -126,13 +128,13 @@ module AWS
           let(:request_options) {{ :user_name => user.name }}
 
           def stub_n_members response, n
-            response.stub(:access_key_metadata).and_return((1..n).collect{|i|
-              double("access_keys-#{i}", {
+            response.data[:access_key_metadata] = (1..n).collect{|i|
+              {
                 :access_key_id => "id-#{i}",
                 :user_name => user.name,
                 :status => i % 2 == 1 ? 'Active' : 'Inactive',
-              })
-            })
+              }
+            }
           end
 
           it_behaves_like "a collection that yields models" do
@@ -176,22 +178,23 @@ module AWS
         context '#create' do
 
           let(:response) { client.stub_for(:create_access_key) }
-          
+
           before(:each) do
 
-            key = double('response-access-key', 
+            key = {
               :access_key_id => 'id',
               :secret_access_key => 'secret',
-              :status => 'Active')
+              :status => 'Active',
+            }
 
-            response.stub(:access_key).and_return(key)
+            response.data[:access_key] = key
 
             client.stub(:create_access_key).and_return(response)
 
           end
-          
+
           it 'calls create_access_key on the client' do
-            
+
             client.should_receive(:create_access_key).with({}).
               and_return(response)
 
@@ -219,7 +222,7 @@ module AWS
             access_key.user.should == nil
             access_key.config.should == access_keys.config
           end
-          
+
         end
 
       end

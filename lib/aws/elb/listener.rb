@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -42,31 +42,31 @@ module AWS
       # @return [LoadBalancer]
       attr_reader :load_balancer
 
-      # @return [Integer] 
+      # @return [Integer]
       attr_reader :port
 
       # @return [Symbol] Returns the protocl for this listener.
       def protocol
-        proto = @protocol || _description.listener.protocol
+        proto = @protocol ||= _description[:listener][:protocol]
         proto.to_s.downcase.to_sym
       end
 
       # @return [Integer]
       def instance_port
-        @instance_port || _description.listener.instance_port
+        @instance_port ||= _description[:listener][:instance_port]
       end
 
       # @return [Symbol]
       def instance_protocol
-        proto = @instance_protocol || _description.listener.instance_protocol
+        proto = @instance_protocol ||= _description[:listener][:instance_protocol]
         proto.to_s.downcase.to_sym
       end
 
-      # Sets the certificate that terminates the specified listener's SSL 
-      # connections. The specified certificate replaces any prior 
+      # Sets the certificate that terminates the specified listener's SSL
+      # connections. The specified certificate replaces any prior
       # certificate for this listener.
       #
-      # @param [String,IAM::ServerCertificate] server_certificate The ARN 
+      # @param [String,IAM::ServerCertificate] server_certificate The ARN
       #   of an IAM::ServerCertificate or an IAM::ServerCertificate object.
       #
       # @return [nil]
@@ -89,9 +89,9 @@ module AWS
       #   associated with this listener, or nil if there is none.
       def server_certificate
         desc = _description
-        if desc.listener.respond_to?(:ssl_certificate_id)
+        if desc[:listener][:ssl_certificate_id]
           AWS.memoize do
-            arn = desc.listener.ssl_certificate_id
+            arn = desc[:listener][:ssl_certificate_id]
             iam = IAM.new(:config => config)
             iam.server_certificates.find{|cert| cert.arn == arn }
           end
@@ -101,10 +101,10 @@ module AWS
       end
 
       # @return [LoadBalancerPolicy,nil] Returns the current policy for this
-      #   listener.  Returns nil if no load balancer policy has been 
+      #   listener.  Returns nil if no load balancer policy has been
       #   associated with it.
       def policy
-        policy_name = _description.policy_names.first
+        policy_name = _description[:policy_names].first
         policy_name ? load_balancer.policies[policy_name] : nil
       end
 
@@ -115,7 +115,7 @@ module AWS
 
         policy_name = policy_or_policy_name.is_a?(LoadBalancerPolicy) ?
           policy_or_policy_name.name : policy_or_policy_name.to_s
-      
+
         client.set_load_balancer_policies_of_listener(
           :load_balancer_name => load_balancer.name,
           :load_balancer_port => port,
@@ -140,9 +140,9 @@ module AWS
 
       # Returns true if this listener exists.
       #
-      #   load_balancer = ELB.new.load_balancers['my-load-balancer']
-      #   listener = load_balancer.listeners[80] # port 80
-      #   listener.exists?
+      #     load_balancer = ELB.new.load_balancers['my-load-balancer']
+      #     listener = load_balancer.listeners[80] # port 80
+      #     listener.exists?
       #
       # @return [Boolean] Returns true if the load balancer has a listener
       #   on this port.
@@ -164,23 +164,24 @@ module AWS
 
       end
 
-      # @private
+      # @api private
       def inspect
         "#{self.class.name} port:#{port}>"
       end
 
-      # @private
-      def == other
-        other.is_a?(Listener) and 
+      # @api private
+      def eql? other
+        other.is_a?(Listener) and
         other.load_balancer == load_balancer and
         other.port == port
       end
-      alias_method :eql?, :==
+      alias_method :==, :eql?
 
       protected
+
       def _description
-        load_balancer.listener_descriptions.find do |desc| 
-          desc.listener.load_balancer_port == port
+        load_balancer.listener_descriptions.find do |desc|
+          desc[:listener][:load_balancer_port] == port
         end
       end
 

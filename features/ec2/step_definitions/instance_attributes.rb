@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -57,12 +57,10 @@ Then /^the instance type should eventually be "([^\"]*)"$/ do |type|
 end
 
 When /^I ask if source\/destination checking is enabled$/ do
-  pending # VPC
   @result = @instance.source_dest_check?
 end
 
 When /^I disable source\/destination checking$/ do
-  pending # VPC
   @instance.source_dest_check = false
 end
 
@@ -95,9 +93,9 @@ Then /^the instance\'s (kernel|ramdisk) ID should eventually be "([^\"]*)"$/ do 
 end
 
 Given /^I put the instance into a stopped state$/ do
-  Given %(I wait for the instance status to be "running")
-  Given %(I stop the instance)
-  Given %(I wait for the instance status to be "stopped")
+  step %(I wait for the instance status to be "running")
+  step %(I stop the instance)
+  step %(I wait for the instance status to be "stopped")
 end
 
 When /^I get the instance\'s root device name$/ do
@@ -193,9 +191,9 @@ Given /^I request to run an instance from a windows image$/ do
   @instance = @ec2.images.
     filter("is-public", "true").
     filter("platform", "windows").
-    filter("manifest-location", "*English-Base*").
+    #filter("manifest-location", "*English-Base*").
     sort_by { |i| i.location }.last.
-    run_instance(:instance_type => "t1.micro")
+    run_instance(:instance_type => "m1.small")
 end
 
 When /^I list instances filtering by the instance ID I just created$/ do

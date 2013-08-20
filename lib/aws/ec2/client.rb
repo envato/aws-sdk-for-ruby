@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,39 +14,55 @@
 module AWS
   class EC2
 
-    # @private
-    class Client < Core::Client
+    # Client class for Amazon Elastic Compute Cloud (EC2).
+    class Client < Core::QueryClient
 
-      AWS.register_autoloads(self) do
-        autoload :XML, 'xml'
-      end
+      API_VERSION = '2013-02-01'
 
-      include Core::ConfiguredClientMethods
-
-      API_VERSION = '2011-02-28'
-
-      REQUEST_CLASS = EC2::Request
-
-      # @private
+      # @api private
       CACHEABLE_REQUESTS = Set[
-        :describe_instances,
-        :describe_instance_attribute,
-        :describe_images,
-        :describe_image_attribute,
-        :describe_volumes,
-        :describe_security_groups,
         :describe_addresses,
+        :describe_availability_zones,
+        :describe_bundle_tasks,
+        :describe_customer_gateways,
+        :describe_dhcp_options,
+        :describe_image_attribute,
+        :describe_images,
+        :describe_instances,
         :describe_key_pairs,
         :describe_regions,
-        :describe_availability_zones,
         :describe_reserved_instances,
         :describe_reserved_instances_offerings,
-        :describe_snapshots,
+        :describe_security_groups,
         :describe_snapshot_attribute,
-        :describe_tags
+        :describe_snapshots,
+        :describe_subnets,
+        :describe_volume_status,
+        :describe_volumes,
+        :describe_vpcs,
+        :describe_vpn_connections,
+        :describe_vpn_gateways,
+        :describe_instance_attribute,
+        :describe_spot_instance_requests,
+        :describe_spot_price_history,
+        :describe_spot_datafeed_subscription,
+        :describe_licenses,
+        :describe_placement_groups,
+        :describe_tags,
+        :describe_internet_gateways,
+        :describe_route_tables,
+        :describe_network_acls,
+        :describe_instance_status,
+        :describe_conversion_tasks,
+        :describe_network_interfaces,
+        :describe_network_interface_attribute,
       ]
 
-      configure_client
+    end
+
+    class Client::V20130201 < Client
+
+      define_client_methods('2013-02-01')
 
     end
   end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,15 +17,15 @@ module AWS
     # A collection that provides access to IAM users belonging to a
     # particular group.
     #
-    #   group = AWS::IAM.new.groups.first
-    #   users = group.users
-    #   users.each { |u| puts u.name }
+    #     group = AWS::IAM.new.groups.first
+    #     users = group.users
+    #     users.each { |u| puts u.name }
     #
     class GroupUserCollection
 
       include Core::Collection::Simple
 
-      # @private
+      # @api private
       def initialize group, options = {}
         @group = group
         super
@@ -68,7 +68,7 @@ module AWS
         each {|user| remove(user) }
       end
 
-      # @private
+      # @api private
       protected
       def _each_item options = {}, &block
         response = client.get_group(:group_name => group.name)

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,10 +14,10 @@
 module AWS
   class S3
 
-    # @private
+    # @api private
     module PaginatedCollection
 
-      include Core::Collection::Limitable
+      include Core::Collection::WithLimitAndNextToken
 
       protected
       def _each_item markers, limit, options = {}, &block
@@ -29,8 +29,8 @@ module AWS
         response = list_request(options)
 
         each_member_in_page(response, &block)
-      
-        response.truncated? ? next_markers(response) : nil
+
+        response.data[:truncated] ? next_markers(response) : nil
 
       end
 
@@ -62,7 +62,7 @@ module AWS
       protected
       def next_markers page
         pagination_markers.inject({}) do |markers, marker_name|
-          if marker = page.send("next_#{marker_name}")
+          if marker = page.data[:"next_#{marker_name}"]
             markers[marker_name] = marker if marker
           end
           markers

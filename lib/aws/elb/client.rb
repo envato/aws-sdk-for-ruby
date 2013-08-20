@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,21 +14,19 @@
 module AWS
   class ELB
 
-    # @private
-    class Client < Core::Client
+    # Client class for Elastic Load Balancing (ELB).
+    class Client < Core::QueryClient
 
-      AWS.register_autoloads(self) do
-        autoload :XML, 'xml'
-      end
+      API_VERSION = '2012-06-01'
 
-      include Core::ConfiguredClientMethods
+      # @api private
+      CACHEABLE_REQUESTS = Set[]
 
-      API_VERSION = '2011-08-15'
+    end
 
-      # @private
-      REQUEST_CLASS = ELB::Request
+    class Client::V20120601 < Client
 
-      configure_client
+      define_client_methods('2012-06-01')
 
     end
   end

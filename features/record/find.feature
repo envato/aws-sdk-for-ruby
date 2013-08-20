@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,7 +16,7 @@
 Feature: Scoped Finds
 
   As an ORM user
-  I want to use an expressive interface 
+  I want to use an expressive interface
   So that I can find records.
 
   @query @where
@@ -86,11 +86,11 @@ Feature: Scoped Finds
       find(:all, :where => { :name => 'Patt' }, :order => [:name, :desc], :limit => 10)
     """
     Then a select should have been performed like:
-    | PART              | VALUE           |
-    | output_list       | *               |
-    | condition         | `name` = 'Patt' |
-    | sort_instructions | `name` DESC     |
-    | limit             | 10              |
+    | PART              | VALUE                                  |
+    | output_list       | *                                      |
+    | condition         | `name` = 'Patt' AND `name` IS NOT NULL |
+    | sort_instructions | `name` DESC                            |
+    | limit             | 10                                     |
 
   Scenario: Adding a record and then finding it
     Given I configure the example class with:

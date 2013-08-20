@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -42,7 +42,7 @@ module AWS
       # @return [Integer]
       attr_reader :packed_policy_size
 
-      # @private
+      # @api private
       def initialize(opts = {})
         @user_id = opts[:user_id]
         @user_arn = opts[:user_arn]

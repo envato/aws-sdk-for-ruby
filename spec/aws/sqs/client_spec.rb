@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -46,16 +46,43 @@ END
         it 'should strip the AWS.SimpleQueueService prefix when forming the class name' do
           http_handler.stub(:handle) do |req, resp|
             resp.status = 400
-            resp.body = <<END
-<ErrorResponse xmlns="http://queue.amazonaws.com/doc/2009-02-01/"><Error><Type>Sender</Type><Code>AWS.SimpleQueueService.Foo</Code><Message>BAR</Message><Detail/></Error><RequestId>abc123</RequestId></ErrorResponse>
-END
+            resp.body = <<-XML
+<ErrorResponse xmlns="http://queue.amazonaws.com/doc/2009-02-01/">
+  <Error>
+    <Type>Sender</Type>
+      <Code>AWS.SimpleQueueService.Foo</Code>
+      <Message>BAR</Message>
+      <Detail/>
+  </Error>
+  <RequestId>abc123</RequestId>
+</ErrorResponse>
+            XML
           end
-          lambda { client.list_queues }.
-            should raise_error(SQS::Errors::Foo, "BAR")
+
+          lambda {
+            client.list_queues
+          }.should raise_error(SQS::Errors::Foo, "BAR")
+
         end
 
       end
 
+      context 'error handling' do
+        it 'should refresh credentials when it is expired' do
+          client.config.credential_provider.should_receive(:refresh).once
+          http_handler.should_receive(:handle) do |req, resp|
+            resp.body = <<END
+<ErrorResponse xmlns="http://queue.amazonaws.com/doc/2009-02-01/"><Error><Type>Sender</Type><Code>ExpiredToken</Code><Message> The security token included in the request is expired</Message><Detail/></Error><RequestId>abc123</RequestId></ErrorResponse>
+END
+            resp.status = 400
+          end.ordered
+          http_handler.should_receive(:handle) do |req, resp|
+            resp.body = ""
+            resp.status = 200
+          end.ordered
+          client.list_queues
+        end
+      end
     end
 
   end

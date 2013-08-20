@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,5 +24,9 @@ When /^I set the model instance "([^"]*)" to "([^"]*)"$/ do |method, value|
 end
 
 When /^I call save on the model instance$/ do
-  @inst.save
+  begin
+    @inst.save
+  rescue AWS::DynamoDB::Errors::ResourceNotFoundException
+    # table does not exist
+  end
 end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,12 +29,12 @@ module AWS
         let(:response) { client.stub_for(:create_load_balancer) }
 
         before(:each) do
-          response.stub(:dns_name).and_return('lb-dns-name')
+          response.data[:dns_name] = 'lb-dns-name'
           client.stub(:create_load_balancer).and_return(response)
         end
 
         def new_load_balancer
-          load_balancers.create('load-balancer-name', 
+          load_balancers.create('load-balancer-name',
             :availability_zones => 'us-east-1a',
             :listeners => {
               :port => 443,
@@ -80,6 +80,49 @@ module AWS
           new_load_balancer
         end
 
+        it 'accepts a list of subnet ids' do
+          client.should_receive(:create_load_balancer).with(
+            :load_balancer_name => 'name',
+            :subnets => %w(id1 id2 id3))
+          load_balancers.create('name', :subnets => %w(id1 id2 id3))
+        end
+
+        it 'accepts a list of subnets objects' do
+          subnets = []
+          subnets << EC2::Subnet.new('id1')
+          subnets << EC2::Subnet.new('id2')
+          subnets << EC2::Subnet.new('id3')
+          client.should_receive(:create_load_balancer).with(
+            :load_balancer_name => 'name',
+            :subnets => %w(id1 id2 id3))
+          load_balancers.create('name', :subnets => subnets)
+        end
+
+        it 'accepts a list of security group ids' do
+          client.should_receive(:create_load_balancer).with(
+            :load_balancer_name => 'name',
+            :security_groups => %w(id1 id2 id3))
+          load_balancers.create('name', :security_groups => %w(id1 id2 id3))
+        end
+
+        it 'accepts a list of security group objects' do
+          groups = []
+          groups << EC2::SecurityGroup.new('id1')
+          groups << EC2::SecurityGroup.new('id2')
+          groups << EC2::SecurityGroup.new('id3')
+          client.should_receive(:create_load_balancer).with(
+            :load_balancer_name => 'name',
+            :security_groups => %w(id1 id2 id3))
+          load_balancers.create('name', :security_groups => groups)
+        end
+
+        it 'accepts a scheme' do
+          client.should_receive(:create_load_balancer).with(
+            :load_balancer_name => 'name',
+            :scheme => 'internal')
+          load_balancers.create('name', :scheme => 'internal')
+        end
+
       end
 
       context '#[]' do
@@ -87,7 +130,7 @@ module AWS
         it 'returns a load balancer' do
           load_balancers['name'].should be_a(LoadBalancer)
         end
-        
+
         it 'returns the load balancer with the given name' do
           load_balancers['name'].name.should == 'name'
         end
@@ -104,9 +147,10 @@ module AWS
 
       it_should_behave_like "a simple collection" do
 
-        let(:collection)    { load_balancers }
+        let(:collection) { load_balancers }
         let(:client_method) { :describe_load_balancers }
-        let(:now)           { Time.now }
+        let(:now) { Time.now }
+        let(:request_options) {{}}
 
         it_should_behave_like "a collection that yields models" do
           let(:member_class)  { LoadBalancer }
@@ -114,11 +158,9 @@ module AWS
 
         def stub_n_members response, n
           balancers = (1..n).collect do |i|
-            double("balancer-#{i}", {
-              :load_balancer_name => "name-#{i}",
-            })
+            { :load_balancer_name => "name-#{i}" }
           end
-          response.stub(:load_balancer_descriptions).and_return(balancers)
+          response.data[:load_balancer_descriptions] = balancers
         end
 
       end

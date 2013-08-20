@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,10 +29,11 @@ module AWS
       # @return [Integer] The part number.
       attr_reader :part_number
 
-      # @private
+      # @api private
       def initialize(upload, part_number, opts = {})
         @upload = upload
         @part_number = part_number
+        @etag = opts[:etag]
         super
       end
 
@@ -57,10 +58,11 @@ module AWS
 
       # @return [String] The ETag of the part.
       def etag
-        get_attribute(:etag)
+        @etag ||= get_attribute(:etag)
+        @etag
       end
 
-      # @private
+      # @api private
       private
       def get_attribute(name)
         (resp = client.list_parts(:bucket_name => upload.object.bucket.name,

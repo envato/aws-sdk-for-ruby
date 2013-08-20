@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,7 +16,7 @@ module AWS
 
     # Respresents a server certificate.
     #
-    #   certificate = iam.server_certificates["MyCert"]
+    #     certificate = iam.server_certificates["MyCert"]
     #
     # You can use this class to get information about a certificate
     # and to delete it.
@@ -24,7 +24,7 @@ module AWS
 
       prefix_update_attributes
 
-      # @private
+      # @api private
       def initialize(name, opts={})
         opts[:name] = name
         super(opts)
@@ -32,11 +32,11 @@ module AWS
 
       # @attr [String] The name that identifies the server
       #   certificate.
-      mutable_attribute :name, :static => true, :as => :server_certificate_name
+      mutable_attribute :name, :static => true, :from => :server_certificate_name
 
       # @attr_reader [String] The stable and unique string identifying
       #   the server certificate.
-      attribute :id, :static => true, :as => :server_certificate_id
+      attribute :id, :static => true, :from => :server_certificate_id
 
       # @attr_reader [Time] The date when the server certificate was
       #   uploaded.
@@ -117,7 +117,7 @@ module AWS
         nil
       end
 
-      # @private
+      # @api private
       protected
       def resource_identifiers
         [[:server_certificate_name, name]]

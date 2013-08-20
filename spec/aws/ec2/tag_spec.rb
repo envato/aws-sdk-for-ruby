@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,7 +28,7 @@ module AWS
 
       let(:tag) { Tag.new(resource, 'key') }
 
-      it_should_behave_like "an ec2 model object", 'resource', 'key', {} 
+      it_should_behave_like "an ec2 model object", 'resource', 'key', {}
 
       context '#resource' do
 
@@ -45,7 +45,7 @@ module AWS
         end
 
         it 'stringifies the key' do
-          Tag.new(resource, :key).key.should == 'key' 
+          Tag.new(resource, :key).key.should == 'key'
         end
 
       end
@@ -62,9 +62,7 @@ module AWS
 
         context 'populated from describe_tags' do
 
-          let(:resp) { double("response",
-                              :request_type => :describe_tags,
-                              :tag_index => {}) }
+          let(:resp) { client.stub_for(:describe_tags) }
 
           let(:attributes) { tag.attributes_from_response(resp) }
 
@@ -80,7 +78,7 @@ module AWS
 
             it 'should return the value from the response object' do
               resp.tag_index["resource-object:resource-id:key"] =
-                double("tag", :value => "value")
+                { :value => 'value' }
               attributes[:value].should == "value"
             end
 
@@ -113,7 +111,7 @@ module AWS
 
             before(:each) do
               resp.tag_index["resource-object:resource-id:key"] =
-                double("tag", :value => "value")
+                { :value => 'value' }
             end
 
             it 'should call describe_tags' do

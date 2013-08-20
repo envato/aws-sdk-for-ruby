@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
 # the License is located at
@@ -11,14 +11,16 @@
 # language governing permissions and limitations under the License.
 
 require 'uri'
+require 'json'
 
 module AWS
   class IAM
 
     class UserPolicy < Resource
 
-      # @param [User] The user this user policy belongs to.
-      # @param [String] The name of this user policy.
+      # @param [User] user The user this user policy belongs to.
+      # @param [String] name The name of this user policy.
+      # @param [Hash] options
       def initialize user, name, options = {}
         @user = user
         @name = name
@@ -31,7 +33,7 @@ module AWS
       # @return [String] Returns the name of this user policy.
       attr_reader :name
 
-      # @private
+      # @api private
       module PolicyProxy
 
         attr_accessor :user_policy

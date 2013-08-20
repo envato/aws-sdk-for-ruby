@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,7 +15,7 @@ module AWS
   class ELB
 
     class InstanceCollection
-      
+
       include Core::Collection::Simple
 
       def initialize load_balancer, options = {}
@@ -25,13 +25,11 @@ module AWS
 
       # Returns an {EC2::Instance} object with 3 extra methods added:
       #
-      # * +#load_balancer+
+      # * `#load_balancer`
+      # * `#remove_from_load_balancer`
+      # * `#elb_health`
       #
-      # * +#remove_from_load_balancer+
-      #
-      # * +#elb_health+
-      #
-      # See {#health} for more information about what +#elb_health+ returns.
+      # See {#health} for more information about what `#elb_health` returns.
       #
       # @return [EC2::Instance] Return an EC2::Instance object with additional
       #   methods added.
@@ -57,50 +55,47 @@ module AWS
         end
 
         instance
-        
+
       end
 
       # Returns an array of instance health descriptions.  Each description
       # is a hash with the following entries:
       #
-      #   * +:instance+ - The {EC2::Instance} being described.
-      #
-      #   * +:description+ - Provides a description of the instance.
-      #
-      #   * +:state+ - Specifies the current state of the instance.
-      #
-      #   * +:reason_code+ - Provides information about the cause of 
-      #     OutOfService instances. Specifically, it indicates whether the 
-      #     cause is Elastic Load Balancing or the instance behind the 
+      #   * `:instance` - The {EC2::Instance} being described.
+      #   * `:description` - Provides a description of the instance.
+      #   * `:state` - Specifies the current state of the instance.
+      #   * `:reason_code` - Provides information about the cause of
+      #     OutOfService instances. Specifically, it indicates whether the
+      #     cause is Elastic Load Balancing or the instance behind the
       #     load balancer.
       #
       # You can get the health of all instances for this load balancer
       # by passing no arguments to this method:
       #
-      #   # get the health of all instances in the collection
-      #   load_balancer.instances.health.each do |instance_health|
-      #      puts "Instance: "    + instance_health[:instance].id
-      #      puts "description: " + instance_health[:description]
-      #      puts "state: "       + instance_health[:state]
-      #      puts "reason code: " + instance_health[:reason_code]
-      #   end
+      #     # get the health of all instances in the collection
+      #     load_balancer.instances.health.each do |instance_health|
+      #        puts "Instance: "    + instance_health[:instance].id
+      #        puts "description: " + instance_health[:description]
+      #        puts "state: "       + instance_health[:state]
+      #        puts "reason code: " + instance_health[:reason_code]
+      #     end
       #
       # If you want the health of a specific list of instances, pass
       # instance ids or instance objects to this method:
       #
-      #   # get the health for a few specific instances
-      #   load_balancer.instances.health('i-12345', 'i-67890').each{|h| ... }
+      #     # get the health for a few specific instances
+      #     load_balancer.instances.health('i-12345', 'i-67890').each{|h| ... }
       #
-      # == Health for a Single Instance
+      # ## Health for a Single Instance
       #
-      # If you want the health of a single instance you can use the {#[]} 
+      # If you want the health of a single instance you can use the {#[]}
       # instead:
       #
-      #   load_balancer.instances['i-123456'].elb_health
-      #   # => { :state => ..., :reason_code => ..., :description => ... }
+      #     load_balancer.instances['i-123456'].elb_health
+      #     # => { :state => ..., :reason_code => ..., :description => ... }
       #
-      # @param [String,EC2::Instance] One or more instances to receive 
-      #   health information for.
+      # @param [String,EC2::Instance] instances A list of instances to
+      #   receive health information for.
       #
       # @return [Array<Hash>] Returns an array of hashes.  Each hash represents
       #   the health of a single instance.  Each hash includes the following
@@ -125,7 +120,7 @@ module AWS
 
       end
 
-      # @return [LoadBalancer] Returns the load balancer this collection 
+      # @return [LoadBalancer] Returns the load balancer this collection
       #   belongs to.
       attr_reader :load_balancer
 
@@ -164,8 +159,7 @@ module AWS
       protected
       def _each_item options = {}
         load_balancer.instance_descriptions.each do |instance|
-          instance = self[instance.instance_id]
-          yield(instance)
+          yield(self[instance[:instance_id]])
         end
       end
 

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,9 +16,9 @@
 Feature: Optimistic Locking
 
   Allows multiple users to access the same record for edits
-  Assumes a minimum of conflicts with the data. 
-  It does this by checking whether another process has made changes to a 
-  record since it was opened, a SimpleModel::StaleObjectError is thrown 
+  Assumes a minimum of conflicts with the data.
+  It does this by checking whether another process has made changes to a
+  record since it was opened, a SimpleModel::StaleObjectError is thrown
   if that has occurred and the update is ignored.
 
   Scenario: Optimistic locking ads version tracking column
@@ -37,8 +37,8 @@ Feature: Optimistic Locking
     | param | Attribute.2.Name    | version_id    |
     | param | Attribute.2.Value   | 1             |
     | param | Attribute.2.Replace | false         |
-    | param | Expected.1.Name     | version_id    |
-    | param | Expected.1.Exists   | false         |
+    | param | Expected.Name       | version_id    |
+    | param | Expected.Exists     | false         |
 
   Scenario: Updating Adding optimstic locking after records have already been saved
     Given I configure the example class with:
@@ -55,8 +55,8 @@ Feature: Optimistic Locking
     Then a request should have been made like:
     | TYPE  | NAME                | VALUE         |
     | param | Action              | PutAttributes |
-    | param | Expected.1.Name     | version_id    |
-    | param | Expected.1.Value    | 1             |
+    | param | Expected.Name       | version_id    |
+    | param | Expected.Value      | 1             |
     | param | Attribute.2.Name    | version_id    |
     | param | Attribute.2.Value   | 2             |
     | param | Attribute.2.Replace | true          |
@@ -77,8 +77,8 @@ Feature: Optimistic Locking
     Then a request should have been made like:
     | TYPE  | NAME                | VALUE         |
     | param | Action              | PutAttributes |
-    | param | Expected.1.Name     | version_id    |
-    | param | Expected.1.Exists   | false         |
+    | param | Expected.Name       | version_id    |
+    | param | Expected.Exists     | false         |
     | param | Attribute.2.Replace | true          |
     | param | Attribute.2.Value   | 1             |
     | param | Attribute.2.Name    | version_id    |

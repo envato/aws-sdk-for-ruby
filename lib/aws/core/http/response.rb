@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,7 +14,7 @@
 module AWS
   module Core
     module Http
-  
+
       # Represents the http response from a service request.
       #
       # Responses have:
@@ -23,21 +23,29 @@ module AWS
       # * headers (hash of response headers)
       # * body (the response body)
       class Response
-  
-        # @return [Integer] (200) response http status code 
+
+        # @return [Integer] Returns the http response status code.
         attr_accessor :status
-  
-        # @return [Hash] ({}) response http headers
+
+        # @return [Hash] ({}) Returns the HTTP response headers.
         attr_accessor :headers
-  
-        # @return [String] ('') response http body
+
+        # @return [String,nil] Returns the HTTP response body.
         attr_accessor :body
-  
-        # @return [String] (false) set to true if the client gives up
-        #   before getting a response from the service.
-        attr_accessor :timeout
-        alias_method :timeout?, :timeout
-  
+
+        # @return [Exception,nil]
+        attr_accessor :network_error
+
+        # @return [Boolean] Returns `true` if the request could not be made
+        #   because of a networking issue (including timeouts).
+        def network_error?
+          @network_error ? true : false
+        end
+
+        # The #network_error attribute was previously #timeout, aliasing
+        # for backwards compatability
+        alias_method :timeout=, :network_error=
+
         # @param [Hash] options
         # @option options [Integer] :status (200) HTTP status code
         # @option options [Hash] :headers ({}) HTTP response headers
@@ -45,11 +53,11 @@ module AWS
         def initialize options = {}, &block
           @status = options[:status] || 200
           @headers = options[:headers] || {}
-          @body = options[:body] || ''
+          @body = options[:body]
           yield(self) if block_given?
           self
         end
-  
+
         # Returns the header value with the given name.
         #
         # The value is matched case-insensitively so if the headers hash
@@ -66,7 +74,7 @@ module AWS
           end
           nil
         end
-  
+
       end
     end
   end

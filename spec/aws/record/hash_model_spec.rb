@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,6 +18,13 @@ module AWS
     describe Model do
 
       it_should_behave_like("an aws record base class", AWS::Record::HashModel)
+
+      it "should contain an assignable hash key" do
+        model = Class.new(AWS::Record::HashModel)
+        model.string_attr :hashname, :hash_key => true
+        model.string_attr :foo
+        model.hash_key.should == "hashname"
+      end
 
     end
   end

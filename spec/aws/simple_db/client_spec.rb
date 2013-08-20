@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -36,7 +36,7 @@ module AWS
 
       it 'should be accessible from the configuration' do
         config = AWS.config.with(
-          :access_key_id => 'foo', 
+          :access_key_id => 'foo',
           :secret_access_key => 'bar'
         )
         config.simple_db_client.should be_a(SimpleDB::Client)
@@ -64,31 +64,32 @@ module AWS
 
         it 'should have the correct action param' do
           action = nil
-          client.with_http_handler {|req, resp| 
-            action = req.get_param('Action').value
+          client.with_http_handler {|req, resp|
+            action = req.body.match(/Action=(\w+)\b/)[1]
           }.send(method, opts)
           action.should == method.to_s.split(/_/).collect{|s| s.capitalize }.join
         end
 
         it 'should have version param' do
           api_version = nil
-          client.with_http_handler {|req, resp| 
-            api_version = req.get_param('Version').value
+          client.with_http_handler {|req, resp|
+            api_version = req.body.match(/Version=(#{Client::API_VERSION})\b/)[1]
           }.send(method, opts)
           api_version.should == Client::API_VERSION
         end
 
         it 'should have a timestamp param' do
+          regex = '\d{4}-\d\d-\d\dT\d\d%3A\d\d%3A\d\dZ'
           timestamp = nil
-          client.with_http_handler {|req, resp| 
-            timestamp = req.get_param('Timestamp').value
+          client.with_http_handler {|req, resp|
+            timestamp = req.body.match(/Timestamp=(#{regex})/)[1]
           }.send(method, opts)
-          timestamp.should match(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/)
+          timestamp.should match(/^#{regex}$/)
         end
 
         it 'should be a post request' do
           http_method = nil
-          client.with_http_handler {|req, resp| 
+          client.with_http_handler {|req, resp|
             http_method = req.http_method
           }.send(method, opts)
           http_method.should == 'POST'
@@ -96,7 +97,7 @@ module AWS
 
         it 'should have a form url encoded content type' do
           content_type = nil
-          client.with_http_handler {|req, resp| 
+          client.with_http_handler {|req, resp|
             content_type = req.headers['Content-Type']
           }.send(method, opts)
           content_type.should == 'application/x-www-form-urlencoded; charset=utf-8'
@@ -105,7 +106,6 @@ module AWS
         it 'should return an object that response to response_metadata' do
           a_client = client.with_http_handler do |req, resp|
             resp.body = <<-XML.strip
-              <?xml version="1.0"?>
               <GenericResponse xmlns="http://sdb.amazonaws.com/doc/2009-04-15/">
                 <ResponseMetadata>
                   <RequestId>request-id</RequestId>
@@ -166,9 +166,9 @@ module AWS
         it 'should have the domain name as a param' do
           name_param = nil
           client.with_http_handler { |req, resp|
-            name_param = req.get_param('DomainName').value
-          }.send(method, opts.merge(:domain_name => 'some-domain-name'))
-          name_param.should == 'some-domain-name'
+            name_param = req.body.match(/DomainName=(\w+)\b/)[1]
+          }.send(method, opts.merge(:domain_name => 'somedomainname'))
+          name_param.should == 'somedomainname'
         end
 
       end
@@ -176,7 +176,7 @@ module AWS
       context '#create_domain' do
 
         let(:method) { :create_domain }
-        
+
         let(:opts) { { :domain_name => 'sample-domain' } }
 
         it_should_behave_like "an aws http request", 'POST'
@@ -190,7 +190,7 @@ module AWS
       context '#list_domains' do
 
         let(:method) { :list_domains }
-        
+
         let(:opts) { {} }
 
         it_should_behave_like "an aws http request", 'POST'
@@ -200,21 +200,20 @@ module AWS
         it 'should accept a limit and pass it as a request param' do
           limit = nil
           client.with_http_handler { |req, resp|
-            limit = req.get_param('MaxNumberOfDomains').value
-          }.list_domains(:limit => 10)
+            limit = req.body.match(/MaxNumberOfDomains=(\w+)\b/)[1]
+          }.list_domains(:max_number_of_domains => 10)
           limit.should == "10"
         end
 
         it 'should accept a next_token and pass it as a request param' do
           next_token = nil
           client.with_http_handler { |req, resp|
-            next_token = req.get_param('NextToken').value
-          }.list_domains(:next_token => 'my-next-token')
-          next_token.should == 'my-next-token'
+            next_token = req.body.match(/NextToken=(\w+)\b/)[1]
+          }.list_domains(:next_token => 'token')
+          next_token.should == 'token'
         end
 
         let(:response_body) { <<-XML }
-          <?xml version="1.0"?>
           <ListDomainsResponse xmlns="http://sdb.amazonaws.com/doc/2009-04-15/">
             <ListDomainsResult>
               <DomainName>foo</DomainName>
@@ -230,13 +229,11 @@ module AWS
 
         let(:response) {
           body = response_body
-          client.with_http_handler { |req, resp|
-            resp.body = body
-          }.list_domains
+          client.with_http_handler{|req, resp| resp.body = body }.list_domains
         }
 
         context 'response#domain_names' do
-          
+
           it 'should be an array of domain name strings' do
             response.domain_names.should == %w(foo bar yuck)
           end
@@ -248,7 +245,7 @@ module AWS
       context '#delete_domain' do
 
         let(:method) { :delete_domain }
-        
+
         let(:opts) { { :domain_name => 'sample-domain' } }
 
         it_should_behave_like "an aws http request", 'POST'
@@ -262,7 +259,7 @@ module AWS
       context '#domain_metadata' do
 
         let(:method) { :domain_metadata }
-        
+
         let(:opts) { { :domain_name => 'sample-domain' } }
 
         it_should_behave_like "an aws http request", 'POST'
@@ -271,7 +268,7 @@ module AWS
 
         it_should_behave_like "requires a domain name"
 
-        let(:response_body) { <<-XML }
+        let(:response_body) { <<-XML.strip }
           <?xml version="1.0"?>
           <DomainMetadataResponse xmlns="http://sdb.amazonaws.com/doc/2009-04-15/">
             <DomainMetadataResult>
@@ -321,7 +318,7 @@ module AWS
           response.attribute_values_size_bytes.should == 6
         end
 
-        it 'should expose Timestamp as an integer' do
+        it 'should expose Timestamp as an integer', :tagged => true do
           response.timestamp.should == 1234567890
         end
 

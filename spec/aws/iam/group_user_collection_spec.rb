@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -62,17 +62,18 @@ module AWS
         let(:client_method)   { :get_group }
         let(:now)             { Time.now }
         let(:request_options) {{ :group_name => group.name }}
+        let(:member_class)    { User }
 
         def stub_n_members response, n
-          response.stub(:users).and_return((1..n).collect{|i|
-            double("user-#{i}", {
+          response.data[:users] = (1..n).collect{|i|
+            {
               :user_name => "user#{i}",
               :user_id => "ABCXYZ#{i}",
               :create_date => now,
               :arn => "awn:aws:iam::12345678901#{i}:user:/path/#{i}/user#{i}",
               :path => "/path/#{i}/",
-            })
-          })
+            }
+          }
         end
 
         it_behaves_like "a collection that yields models" do

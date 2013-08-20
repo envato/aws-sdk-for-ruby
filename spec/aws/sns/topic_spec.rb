@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,6 +26,13 @@ module AWS
 
       let(:topic) { Topic.new(arn, :config => config) }
 
+      it_behaves_like "it has a delivery policy" do
+        let(:object) { topic }
+        let(:arn_key) { :topic_arn }
+        let(:get_method) { :get_topic_attributes }
+        let(:set_method) { :set_topic_attributes }
+      end
+
       context '#config' do
 
         it 'returns the config from initialize' do
@@ -35,7 +42,7 @@ module AWS
       end
 
       context '#arn' do
-        
+
         it 'returns the arn from initialize' do
           topic.arn.should == arn
         end
@@ -43,12 +50,12 @@ module AWS
       end
 
       context '#name' do
-        
+
         it 'returns the trailing piece from the arn' do
           topic = Topic.new('arn:aws:sns:us-east-1:599169622985:MyTopic')
           topic.name.should == 'MyTopic'
         end
-        
+
         it 'it should not make any requests against client' do
           topic = Topic.new('arn', :sns_client => double('client'))
           topic.name
@@ -58,15 +65,15 @@ module AWS
 
       context '#subscribe' do
 
-        let(:resp) { client.new_stub_for(:subscribe) }
+        let(:resp) { client.stub_for(:subscribe) }
 
         before(:each) do
-          resp.stub(:subscription_arn).and_return(nil)
+          resp.data.delete(:subscription_arn)
           client.stub(:subscribe).and_return(resp)
         end
 
         it 'should return a subscription if an ARN is returned' do
-          resp.stub(:subscription_arn).and_return("arn:foo:bar")
+          resp.data[:subscription_arn] = 'arn:foo:bar'
           subscription = topic.subscribe("http://foo.bar")
           subscription.should be_a(Subscription)
           subscription.arn.should == "arn:foo:bar"
@@ -74,7 +81,7 @@ module AWS
         end
 
         it 'should return nil if the subscription is pending' do
-          resp.stub(:subscription_arn).and_return("pending confirmation")
+          resp.data[:subscription_arn] = 'pending confirmation'
           topic.subscribe("http://foo.bar").should be_nil
         end
 
@@ -204,8 +211,8 @@ module AWS
 
               policy = SQS::Policy.new
               policy.allow(
-                :principal => :any, 
-                :actions => [:send_message], 
+                :principal => :any,
+                :actions => [:send_message],
                 :resources => [queue]
               ).where(:source_arn).is(arn)
 
@@ -227,8 +234,8 @@ module AWS
 
               policy = SQS::Policy.new
               policy.allow(
-                :principal => :any, 
-                :actions => [:send_message], 
+                :principal => :any,
+                :actions => [:send_message],
                 :resources => [queue]
               ).where(:source_arn).is(arn)
 
@@ -281,7 +288,7 @@ module AWS
         let(:resp) { client.new_stub_for(:confirm_subscription) }
 
         before(:each) do
-          resp.stub(:subscription_arn).and_return("arn123")
+          resp.data[:subscription_arn] = 'arn123'
           client.stub(:confirm_subscription).and_return(resp)
         end
 
@@ -295,18 +302,17 @@ module AWS
 
         it 'should pass :authenticate_on_unsubscribe' do
           client.should_receive(:confirm_subscription).
-            with(hash_including(:authenticate_on_unsubscribe => "foo")).
+            with(hash_including(:authenticate_on_unsubscribe => "true")).
             and_return(resp)
-          topic.confirm_subscription("abc123",
-                                     :authenticate_on_unsubscribe => "foo")
+          topic.confirm_subscription("abc123", :authenticate_on_unsubscribe => true)
         end
 
         it 'should return a subscription object with the ARN from the response' do
           sub = topic.confirm_subscription("abc123")
           sub.should be_a(Subscription)
           sub.arn.should == "arn123"
-          sub.config.should be(config)
-          sub.topic.should be(topic)
+          sub.config.should == config
+          sub.topic.should == topic
         end
 
       end
@@ -327,9 +333,9 @@ module AWS
         let(:policy) { Policy.from_json('{"Version":"2008-10-17","Id":"us-east-1/698519295917/test__default_policy_ID","Statement" : [{"Effect":"Allow","Sid":"us-east-1/698519295917/test__default_statement_ID","Principal" : {"AWS": "*"},"Action":["SNS:GetTopicAttributes","SNS:SetTopicAttributes","SNS:AddPermission","SNS:RemovePermission","SNS:DeleteTopic","SNS:Subscribe","SNS:ListSubscriptionsByTopic","SNS:Publish","SNS:Receive"],"Resource":"arn:aws:sns:us-east-1:698519295917:test","Condition" : {"StringLike" : {"AWS:SourceArn": "arn:aws:*:*:698519295917:*"}}}]}') }
 
         let(:response) { client.stub_for(:get_topic_attributes) }
-        
+
         before(:each) do
-          response.stub(:attributes).and_return({
+          response.data[:attributes] = {
             'DisplayName' => 'Display Name',
             'Owner' => '1234567890',
             'TopicArn' => 'arn:aws:sns:us-east-1:123456789012:topicname',
@@ -337,37 +343,37 @@ module AWS
             'SubscriptionsConfirmed' => '1',
             'SubscriptionsPending' => '2',
             'SubscriptionsDeleted' => '3',
-          })
+          }
           client.stub(:get_topic_attributes).and_return(response)
         end
 
         context '#display_name' do
-          
+
           it 'calls get_topic_attributes' do
             client.should_receive(:get_topic_attributes).
               with(:topic_arn => topic.arn)
             topic.display_name
           end
-          
+
           it 'returns the display name as a string' do
             topic.display_name.should == 'Display Name'
           end
 
           it 'returns the name when the display name is not present' do
-            response.stub(:attributes).and_return({})
+            response.data[:attributes] = {}
             topic.display_name.should == 'topicname'
           end
 
         end
 
         context '#num_subscriptions_confirmed' do
-          
+
           it 'calls get_topic_attributes' do
             client.should_receive(:get_topic_attributes).
               with(:topic_arn => topic.arn)
             topic.num_subscriptions_confirmed
           end
-          
+
           it 'returns the num_subscriptions_confirmed as an integer' do
             topic.num_subscriptions_confirmed.should == 1
           end
@@ -375,13 +381,13 @@ module AWS
         end
 
         context '#num_subscriptions_pending' do
-          
+
           it 'calls get_topic_attributes' do
             client.should_receive(:get_topic_attributes).
               with(:topic_arn => topic.arn)
             topic.num_subscriptions_pending
           end
-          
+
           it 'returns the num_subscriptions_pending as an integer' do
             topic.num_subscriptions_pending.should == 2
           end
@@ -389,13 +395,13 @@ module AWS
         end
 
         context '#num_subscriptions_deleted' do
-          
+
           it 'calls get_topic_attributes' do
             client.should_receive(:get_topic_attributes).
               with(:topic_arn => topic.arn)
             topic.num_subscriptions_deleted
           end
-          
+
           it 'returns the num_subscriptions_deleted as an integer' do
             topic.num_subscriptions_deleted.should == 3
           end
@@ -403,13 +409,13 @@ module AWS
         end
 
         context '#owner' do
-          
+
           it 'calls get_topic_attributes' do
             client.should_receive(:get_topic_attributes).
               with(:topic_arn => topic.arn)
             topic.owner
           end
-          
+
           it 'returns the owner as a string' do
             topic.owner.should == '1234567890'
           end
@@ -417,13 +423,13 @@ module AWS
         end
 
         context '#policy' do
-          
+
           it 'calls get_topic_attributes' do
             client.should_receive(:get_topic_attributes).
               with(:topic_arn => topic.arn)
             topic.policy
           end
-          
+
           it 'returns the policy' do
             #puts topic.policy.send(:hash_without_ids).to_yaml
             #puts policy.send(:hash_without_ids).to_yaml
@@ -440,7 +446,7 @@ module AWS
           client.should_receive(:publish).with do |opts|
             opts[:topic_arn].should == topic.arn
             opts[:message_structure].should == 'json'
-            JSON.parse(opts[:message]).should == 
+            JSON.parse(opts[:message]).should ==
               JSON.parse(options.merge(:default => 'message').to_json)
           end.and_return(response)
         end
@@ -448,13 +454,13 @@ module AWS
         let(:response) { client.stub_for(:publish) }
 
         before(:each) do
-          response.stub(:message_id).and_return('message-id')
+          response.data[:message_id] = 'message-id'
           client.stub(:publish).and_return(response)
         end
 
         it 'calls publish on the client' do
           should_receive_publish_with
-          topic.publish('message')  
+          topic.publish('message')
         end
 
         it 'returns the message id from the response' do

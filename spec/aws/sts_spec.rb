@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,23 +22,21 @@ module AWS
 
     let(:sts) { STS.new(:sts_client => client) }
 
-    it_behaves_like 'a class that accepts configuration',
-      :sts_client
+    it_behaves_like 'a class that accepts configuration', :sts_client
 
-    let(:response_credentials) do
-      double("credentials",
-             :access_key_id => "FOO",
-             :secret_access_key => "BAR",
-             :session_token => "BAZ",
-             :expiration => Time.now)
-    end
+    let(:response_credentials) {{
+       :access_key_id => "FOO",
+       :secret_access_key => "BAR",
+       :session_token => "BAZ",
+       :expiration => Time.now,
+    }}
 
     context '#new_session' do
 
-      let(:resp) { client.new_stub_for(:get_session_token) }
+      let(:resp) { client.stub_for(:get_session_token) }
 
       before(:each) do
-        resp.stub(:credentials).and_return(response_credentials)
+        resp.data[:credentials] = response_credentials
         client.stub(:get_session_token).and_return(resp)
       end
 
@@ -67,22 +65,22 @@ module AWS
 
       it 'should set the expiration time' do
         sts.new_session.expires_at.
-          should == response_credentials.expiration
+          should == response_credentials[:expiration]
       end
 
     end
 
     context '#new_federated_session' do
 
-      let(:resp) { client.new_stub_for(:get_federation_token) }
+      let(:resp) { client.stub_for(:get_federation_token) }
 
       before(:each) do
-        resp.stub(:credentials).and_return(response_credentials)
-        resp.stub(:federated_user).
-          and_return(double("user",
-                            :federated_user_id => "fred",
-                            :arn => "arn:fred"))
-        resp.stub(:packed_policy_size).and_return(12)
+        resp.data[:credentials] = response_credentials
+        resp.data[:federated_user] = {
+          :federated_user_id => "fred",
+          :arn => "arn:fred",
+        }
+        resp.data[:packed_policy_size] = 12
         client.stub(:get_federation_token).and_return(resp)
       end
 
@@ -130,7 +128,7 @@ module AWS
 
       it 'should set the expiration time' do
         sts.new_federated_session("Bob").expires_at.
-          should == resp.credentials.expiration
+          should == resp[:credentials][:expiration]
       end
 
       it 'should set the user ID' do

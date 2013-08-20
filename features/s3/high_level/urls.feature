@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,6 +28,11 @@ Feature: Pre-signed URLs
   Scenario: Pre-signed PUT
     When I generate a pre-signed PUT URL for the object "foo"
     And I use a regular HTTP client to PUT "HELLO" to the URL
+    Then the contents of object "foo" should eventually be "HELLO"
+
+  Scenario: Pre-signed PUT with Content-Type and Content-MD5
+    When I generate a pre-signed PUT URL for the object "foo" with content info
+    And I use a regular HTTP client to PUT "HELLO" to the URL with content info
     Then the contents of object "foo" should eventually be "HELLO"
 
   Scenario: Pre-signed DELETE

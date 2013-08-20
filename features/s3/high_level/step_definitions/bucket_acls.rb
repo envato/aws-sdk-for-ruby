@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -33,14 +33,14 @@ END
 end
 
 Given /^I have set a bucket ACL$/ do
-  Given "I call create_bucket"
+  step "I call create_bucket"
   @bucket = @s3.buckets[@bucket_name]
   @bucket.acl = {
     :owner => { :id => @bucket.owner.id },
     :grants => [{ :permission => :full_control,
                   :grantee => {
                     :canonical_user_id =>
-                    "154b2f3550127d0439dfe1e89a03a7a4178048cc05c6fdaeb40796841a5cfcef"
+                    "b82eae0a69b20ebec9f229f3812b69eec1e09bbf89b1999ccb08aa97bda77270",
                   } }]
   }
 end
@@ -55,13 +55,13 @@ end
 
 Then /^the result should have the same grants as the one I set$/ do
   @result.grants.map { |g| g.grantee.canonical_user_id }.
-    should include("154b2f3550127d0439dfe1e89a03a7a4178048cc05c6fdaeb40796841a5cfcef")
+    should include("b82eae0a69b20ebec9f229f3812b69eec1e09bbf89b1999ccb08aa97bda77270")
 end
 
 When /^I change the ACL to include a new grant$/ do
   @s3.buckets[@bucket_name].acl.change do |acl|
     acl.grant(:read_acp).
       to(:canonical_user_id =>
-         "154b2f3550127d0439dfe1e89a03a7a4178048cc05c6fdaeb40796841a5cfcef")
+         "b82eae0a69b20ebec9f229f3812b69eec1e09bbf89b1999ccb08aa97bda77270")
   end
 end

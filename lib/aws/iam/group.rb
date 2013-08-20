@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,31 +20,30 @@ module AWS
     # their jobs. For example, you could have a group called Admins
     # and give that group the types of permissions admins typically
     # need.
+    # @attr [String] name The group's name.
+    # @attr_reader [String] id The group's unique ID.
+    # @attr_reader [Time] create_date When the group was created.
+    # @attr_reader [String] arn The group's ARN (Amazon Resource Name).
+    # @attr [String] path The group's path.  Paths are used to identify
+    #   which division or part of an organization the group belongs to.
     class Group < Resource
 
       prefix_update_attributes
 
-      # @private
+      # @api private
       def initialize(name, options = {})
         options[:name] = name
         super
       end
 
-      # @attr [String] The group's name.
-      mutable_attribute :name, :static => true, :as => :group_name
+      mutable_attribute :name, :static => true, :from => :group_name
 
-      # @attr_reader [String] The group's unique ID.
-      attribute :id, :static => true, :as => :group_id
+      attribute :id, :static => true, :from => :group_id
 
-      # @attr_reader [Time] When the group was created.
       attribute :create_date, :static => true
 
-      # @attr_reader [String] The group's ARN (Amazon Resource Name).
       attribute :arn
 
-      # @attr [String] The group's path.  Paths are used to identify
-      #   which division or part of an organization the group belongs
-      #   to.
       mutable_attribute :path do
         translates_input do |path|
           path = "/#{path}" unless path[0] == ?/
@@ -54,11 +53,11 @@ module AWS
       end
 
       populates_from(:get_group, :create_group) do |resp|
-        resp.group if resp.group.group_name == name
+        resp[:group] if resp[:group][:group_name] == name
       end
 
       populates_from(:list_groups, :list_groups_for_user) do |resp|
-        resp.groups.find { |g| g.group_name == name }
+        resp[:groups].find {|g| g[:group_name] == name }
       end
 
       # (see Resource#exists?)
@@ -73,11 +72,11 @@ module AWS
 
       # Provides access to the users in the group.  For example:
       #
-      #   # get the names of all the users in the group
-      #   group.users.map(&:name)
+      #     # get the names of all the users in the group
+      #     group.users.map(&:name)
       #
-      #   # remove all users from the group
-      #   group.users.clear
+      #     # remove all users from the group
+      #     group.users.clear
       #
       # @return [GroupUserCollection] An object representing all the
       #   users in the group.
@@ -88,11 +87,11 @@ module AWS
       # Provides access to the policies associated with the group.
       # For example:
       #
-      #   # get the policy named "ReadOnly"
-      #   group.policies["ReadOnly"]
+      #     # get the policy named "ReadOnly"
+      #     group.policies["ReadOnly"]
       #
-      #   # remove all policies associated with the group
-      #   group.policies.clear
+      #     # remove all policies associated with the group
+      #     group.policies.clear
       #
       # @return [GroupPolicyCollection] An object representing all the
       #   policies associated with the group.
@@ -100,7 +99,7 @@ module AWS
         GroupPolicyCollection.new(self)
       end
 
-      # @private
+      # @api private
       protected
       def resource_identifiers
         [[:group_name, name]]

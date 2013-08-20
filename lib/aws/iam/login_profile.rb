@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,9 +27,10 @@ module AWS
     #
     # @example Deleting the login profile for a user
     #   user.login_profile.delete
+    #
     class LoginProfile < Resource
 
-      # @private
+      # @api private
       def initialize(user, opts = {})
         @user = user
         super
@@ -67,8 +68,11 @@ module AWS
       #   about making keys inactive or deleting them, see
       #   {User#access_keys}.
       #
+      # @return [nil]
+      #
       def delete
         client.delete_login_profile(resource_options)
+        nil
       end
 
       # @return [Boolean] True if a login profile exists for the user.

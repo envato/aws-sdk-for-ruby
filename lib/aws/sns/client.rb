@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,21 +14,19 @@
 module AWS
   class SNS
 
-    # @private
-    class Client < Core::Client
-
-      AWS.register_autoloads(self) do
-        autoload :XML,     'xml'
-      end
-
-      include Core::ConfiguredClientMethods
+    # Client class for Amazon Simple Notifications Service (SNS).
+    class Client < Core::QueryClient
 
       API_VERSION = '2010-03-31'
 
-      # @private
-      REQUEST_CLASS = SNS::Request
+      # @api private
+      CACHEABLE_REQUESTS = Set[]
 
-      configure_client
+    end
+
+    class Client::V20100331 < Client
+
+      define_client_methods('2010-03-31')
 
     end
   end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -41,8 +41,10 @@ Given /^I create a volume$/ do
 end
 
 When /^I create a volume from the snapshot$/ do
-  @volume = @result = @snapshot.create_volume(@ec2.availability_zones.first)
-  @created_volumes << @volume
+  eventually do
+    @volume = @result = @snapshot.create_volume(@ec2.availability_zones.first)
+    @created_volumes << @volume
+  end
 end
 
 Then /^the result should be a volume$/ do

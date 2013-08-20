@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -39,7 +39,7 @@ module AWS
       end
 
       context '#path' do
-        
+
         it 'defaults to /' do
           request.path.should == '/'
         end
@@ -118,12 +118,6 @@ module AWS
           request.path.should == "/foo_bar/key/foo%20bla/"
         end
 
-        it 'should be readonly' do
-          lambda {
-            request.path = '/foo'
-          }.should raise_error(NoMethodError, /undefined method/)
-        end
-
       end
 
       context '#uri' do
@@ -165,27 +159,19 @@ module AWS
 
       context '#add_authorization!' do
 
-        let(:signer) { Core::DefaultSigner.new('KEY', 'secret') }
+        let(:credential_provider) {
+          Core::CredentialProviders::StaticProvider.new({
+            :access_key_id => 'KEY',
+            :secret_access_key => 'SECRET',
+            :session_token => 'TOKEN',
+          })
+        }
 
-        before(:each) do
-          signer.stub(:sign).and_return('SIGNATURE')
-        end
-
-        context 'signer does not support a session token' do
-
-          it 'should not add the x-amz-security-token header' do
-            request.add_authorization!(signer)
-            request.headers.
-              should_not include("x-amz-security-token")
-          end
-
-        end
-
-        context 'signer does not have a session token configured' do
+        context 'credentials does not provide a session token' do
 
           it 'should not add the x-amz-security-token header' do
-            signer.stub(:session_token)
-            request.add_authorization!(signer)
+            credential_provider.stub(:session_token).and_return(nil)
+            request.add_authorization!(credential_provider)
             request.headers.
               should_not include("x-amz-security-token")
           end
@@ -195,12 +181,11 @@ module AWS
         context 'signer has a session token configured' do
 
           it 'should add the x-amz-security-token header prior to computing the signature' do
-            signer.stub(:session_token).and_return("TOKEN")
-            signer.should_receive(:sign) do |*args|
+            Core::Signer.should_receive(:sign) do |*args|
               request.headers["x-amz-security-token"].should == "TOKEN"
               "SIGNATURE"
             end
-            request.add_authorization!(signer)
+            request.add_authorization!(credential_provider)
           end
 
         end
@@ -213,9 +198,9 @@ module AWS
         let(:body) { 'hello world' }
         let(:md5) { Digest::MD5.hexdigest(body) }
         let(:content_type) { 'text/plain' }
-        let(:date) { Time.now.rfc822 }
+        let(:date) { Time.now.httpdate }
 
-        let(:request) { 
+        let(:request) {
           req = Request.new
           req.bucket = 'some_bucket'
           req.key = 'some/path'
@@ -232,7 +217,7 @@ module AWS
         }
 
         let(:signing_string_lines) { request.string_to_sign.split(/\n/) }
-        
+
         it 'line 1 is the http verb' do
           signing_string_lines[0].should == verb
         end
@@ -265,7 +250,7 @@ module AWS
         it 'should begin with a slash' do
           Request.new.canonicalized_resource.should match(/^\//)
         end
-        
+
         it 'should begin with the bucket if it is not dns compat' do
           req = Request.new
           req.bucket = 'dns_incompat'
@@ -374,7 +359,7 @@ END
 
         it 'should add a Date header if not provided' do
           fake_date = 'Mon, 1 Jan 1234 12:34:56 +0000'
-          Time.stub_chain(:now, :rfc822).and_return(fake_date)
+          Time.stub_chain(:now, :httpdate).and_return(fake_date)
           request.string_to_sign
           request.headers['Date'].should == fake_date
         end

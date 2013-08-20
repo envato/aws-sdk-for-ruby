@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,19 +28,20 @@ module AWS
 
       before(:each) do
         response = client.stub_for(:describe_load_balancers)
-        response.stub(:load_balancer_descriptions).and_return([
-          double('lb-desc', 
+        response.data[:load_balancer_descriptions] = [
+          {
             :load_balancer_name => load_balancer.name,
             :backend_server_descriptions => [
-              double('bes-desc-1',
+              {
                 :instance_port => 80,
-                :policy_names => %w(abc)),
-              double('bes-desc-2',
+                :policy_names => %w(abc),
+              }, {
                 :instance_port => 81,
-                :policy_names => %w(xyz)),
+                :policy_names => %w(xyz),
+              },
             ]
-          ),
-        ])
+          },
+        ]
         client.stub(:describe_load_balancers).and_return(response)
       end
 
@@ -61,7 +62,7 @@ module AWS
       context '#[]=' do
 
         it 'calls #set_load_balancer_policies_for_backend_server' do
-          
+
           client.should_receive(:set_load_balancer_policies_for_backend_server).
             with(
               :load_balancer_name => load_balancer.name,
@@ -73,7 +74,7 @@ module AWS
         end
 
         it 'accepts policy objects' do
-          
+
           client.should_receive(:set_load_balancer_policies_for_backend_server).
             with(
               :load_balancer_name => load_balancer.name,
@@ -85,7 +86,7 @@ module AWS
         end
 
         it 'accepts nil to remove a policy' do
-          
+
           client.should_receive(:set_load_balancer_policies_for_backend_server).
             with(
               :load_balancer_name => load_balancer.name,

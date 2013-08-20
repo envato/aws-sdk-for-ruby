@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -123,26 +123,31 @@ module AWS
 
           listeners = []
 
-          listeners << double('lb-listener',
-            :listener => double('listener-desc', {
+          listeners << {
+            :listener => {
               :load_balancer_port => 80,
               :protocol => 'TCP',
               :instance_port => 81,
-              :instance_protocol => 'HTTP'}))
+              :instance_protocol => 'HTTP',
+            }
+          }
 
-          listeners << double('lb-listener',
-            :listener => double('listener-desc', {
+          listeners << {
+            :listener => {
               :load_balancer_port => 443,
               :protocol => 'HTTPS',
               :instance_port => 443,
               :instance_protocol => 'HTTPS',
-              :ssl_certificate_id => 'cert-arn'}))
+              :ssl_certificate_id => 'cert-arn',
+            }
+          }
 
-          lb = double('lb-description')
-          lb.stub(:load_balancer_name).and_return(load_balancer.name)
-          lb.stub(:listener_descriptions).and_return(listeners)
+          lb = {
+            :load_balancer_name => load_balancer.name,
+            :listener_descriptions => listeners,
+          }
 
-          response.stub(:load_balancer_descriptions).and_return([lb])
+          response.data[:load_balancer_descriptions] = [lb]
 
         end
 

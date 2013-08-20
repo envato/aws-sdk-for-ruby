@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,7 +12,8 @@
 # language governing permissions and limitations under the License.
 
 Given /^I create a new bucket$/ do
-  create_bucket_high_level
+  @old_bucket = @bucket
+  @new_bucket = create_bucket_high_level
 end
 
 Given /^I create a bucket named "([^"]*)"$/ do |bucket_name|
@@ -34,15 +35,39 @@ Given /^I write "([^"]*)" to the key "([^"]*)"$/ do |data, key|
 end
 
 Given /^I have a bucket with the following keys:$/ do |table|
-  Given "I create a new bucket"
+  step "I create a new bucket"
   table.hashes.each do |hash|
-    Given "I write \"foo\" to the key \"#{hash['key']}\""
+    step "I write \"foo\" to the key \"#{hash['key']}\""
   end
 end
 
 Given /^I have a bucket with (\d+) keys$/ do |count|
-  Given "I create a new bucket" unless @bucket
+  step "I create a new bucket" unless @bucket
   count.to_i.times do |n|
-    Given "I write \"foo\" to the key \"#{'%04d' % n}\""
+    step "I write \"foo\" to the key \"#{'%04d' % n}\""
   end
 end
+
+Given(/^I monkey\-patch Net::HTTP to work with 100-continue$/) do
+  AWS.patch_net_http_100_continue!
+end
+
+Given(/^I configure S3 with a (\d+)MB http_continue_threshold and (\d+) second continue timeout$/) do |size, seconds|
+  @s3 = AWS::S3.new(
+    :http_continue_threshold => size.to_i * 1024 * 1024,
+    :http_continue_timeout => seconds.to_i)
+end
+
+When(/^I put an object that is (\d+)MB large$/) do |size|
+  @response = @s3.client.put_object({
+    :bucket_name => @bucket.name,
+    :key => 'foo',
+    :data => '.' * size.to_i * 1024 * 1024,
+  })
+end
+
+Then(/^the request headers should have "Expect" set to "100-continue"$/) do
+  @response.http_request.headers['expect'].should eq('100-continue')
+end
+
+

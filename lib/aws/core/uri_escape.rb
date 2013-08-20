@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,23 +16,20 @@ require 'cgi'
 module AWS
   module Core
 
-    # @private
+    # Provides helper methods for URI escaping values and paths.
     module UriEscape
 
-      # Does URI escaping the way AWS expects it to be done.
-      #
-      # @private
-      protected
+      # @param [String] value
+      # @return [String] Returns a URI escaped string.
       def escape value
-        value = value.encode("UTF-8") if
-          value.respond_to?(:encode)
-        CGI::escape(value.to_s).gsub('+', '%20')
+        value = value.encode("UTF-8") if value.respond_to?(:encode)
+        CGI::escape(value.to_s).gsub('+', '%20').gsub('%7E', '~')
       end
+      module_function :escape
 
-      # URI-escapes a path without escaping the separators
-      #
-      # @private
-      protected
+      # @param [String] value
+      # @return [String] Returns a URI-escaped path without escaping the
+      #   separators.
       def escape_path value
         escaped = ""
         value.scan(%r{(/*)([^/]*)(/*)}) do |(leading, part, trailing)|
@@ -40,6 +37,7 @@ module AWS
         end
         escaped
       end
+      module_function :escape_path
 
     end
   end

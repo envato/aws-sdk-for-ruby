@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,13 +15,13 @@ module AWS
   class DynamoDB
     class Resource < Core::Resource
 
-      # @private
+      # @api private
       def self.attribute name, options = {}
 
         # DynamoDB attributes are all returned in UpperCamelCase, this
         # converts the :snake_case name into the correct format.
-        unless options[:as]
-          options[:as] = name.to_s.split(/_/).map(&:capitalize).join
+        unless options[:from]
+          options[:from] = name.to_s.split(/_/).map(&:capitalize).join
         end
 
         super(name, options)

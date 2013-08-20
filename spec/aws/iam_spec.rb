@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,7 +15,7 @@ require 'spec_helper'
 
 module AWS
   describe IAM do
-    
+
     let(:config) { stub_config }
 
     let(:client) { config.iam_client }
@@ -89,11 +89,21 @@ module AWS
 
     end
 
+    context '#virtual_mfa_devices' do
+
+      it 'returns a virtual mfa devices collection' do
+        devices = iam.virtual_mfa_devices
+        devices.should be_an(IAM::VirtualMfaDeviceCollection)
+        devices.config.should == iam.config
+      end
+
+    end
+
     context '#account_alias' do
 
       it 'returns the first account alias' do
         resp = client.stub_for(:list_account_aliases)
-        resp.stub(:account_aliases).and_return(['foo'])
+        resp.data[:account_aliases] = ['foo']
         client.should_receive(:list_account_aliases).and_return(resp)
         iam.account_alias.should == 'foo'
       end
@@ -101,7 +111,7 @@ module AWS
     end
 
     context '#account_alias=' do
-      
+
       it 'replaces the account alias' do
         client.should_receive(:create_account_alias).
           with(:account_alias => 'foo')
@@ -111,7 +121,7 @@ module AWS
       it 'deletes the account alias if received nil' do
 
         resp = client.stub_for(:list_account_aliases)
-        resp.stub(:account_aliases).and_return(['foo'])
+        resp.data[:account_aliases] = ['foo']
         client.should_receive(:list_account_aliases).and_return(resp)
         client.should_receive(:delete_account_alias).
           with(:account_alias => 'foo')
@@ -123,11 +133,12 @@ module AWS
     end
 
     context '#remove_account_alias' do
-      
+
       it 'calls delete on the current account alias' do
 
         resp = client.stub_for(:list_account_aliases)
-        resp.stub(:account_aliases).and_return(['foo'])
+        resp.data[:account_aliases] = ['foo']
+
         client.should_receive(:list_account_aliases).and_return(resp)
         client.should_receive(:delete_account_alias).
           with(:account_alias => 'foo')
@@ -148,12 +159,78 @@ module AWS
       end
 
       it 'returns a hash with symbol-ized keys' do
-        client.stub(:get_account_summary).
-          and_return(double("account summary",
-                            :summary_map => { "FooBar" => "baz" }))
+        resp = client.stub_for(:get_account_summary)
+        resp.data[:summary_map] = { 'FooBar' => 'baz' }
+        client.stub(:get_account_summary).and_return(resp)
         iam.account_summary.should == {
           :foo_bar => "baz"
         }
+      end
+
+    end
+
+    context '#change_password' do
+
+      it 'calls #change_password on the client' do
+        client.should_receive(:change_password).with(
+          :old_password => 'old',
+          :new_password => 'new')
+        iam.change_password('old', 'new')
+      end
+
+    end
+
+    context '#update_account_password_policy' do
+
+      it 'calss #update_account_password_policy on the client' do
+        client.should_receive(:update_account_password_policy).with(
+          :minimum_password_length => 10,
+          :require_symbols => true,
+          :require_numbers => false,
+          :require_uppercase_characters => true,
+          :require_lowercase_characters => true)
+        iam.update_account_password_policy(
+          :minimum_password_length => 10,
+          :require_symbols => true,
+          :require_numbers => false,
+          :require_uppercase_characters => true,
+          :require_lowercase_characters => true)
+      end
+
+    end
+
+    context '#delete_account_password_policy' do
+
+      it 'calls #delete_account_password_policy with no options' do
+        client.should_receive(:delete_account_password_policy).with(no_args)
+        iam.delete_account_password_policy
+      end
+
+    end
+
+    context '#account_password_policy' do
+
+      it 'returns the policy as a hash' do
+        resp = client.stub_for(:get_account_password_policy)
+        resp.stub(:password_policy).and_return(double('policy',
+          :minimum_password_length => 11,
+          :require_symbols? => false,
+          :require_numbers? => true,
+          :require_uppercase_characters? => false,
+          :require_lowercase_characters? => true
+        ))
+        iam.account_password_policy.should == {
+          :minimum_password_length => 11,
+          :require_symbols => false,
+          :require_numbers => true,
+          :require_uppercase_characters => false,
+          :require_lowercase_characters => true,
+        }
+      end
+
+      it 'returns nil if there is no policy' do
+        client.stub(:get_account_password_policy).and_raise(IAM::Errors::NoSuchEntity)
+        iam.account_password_policy.should == nil
       end
 
     end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,7 +14,7 @@
 module AWS
   class S3
 
-    # @see Core::Policy
+    # (see Core::Policy)
     class Policy < Core::Policy
 
       class Statement < Core::Policy::Statement
@@ -49,7 +49,7 @@ module AWS
           :get_bucket_notification => "s3:GetBucketNotification",
           :set_bucket_notification => "s3:PutBucketNotification"
         }
-        
+
         protected
         def resource_arn resource
           prefix = 'arn:aws:s3:::'
@@ -58,11 +58,11 @@ module AWS
             "#{prefix}#{resource.name}"
           when S3Object
             "#{prefix}#{resource.bucket.name}/#{resource.key}"
-          when ObjectCollection 
+          when ObjectCollection
             "#{prefix}#{resource.bucket.name}/#{resource.prefix}*"
           when /^arn:/
             resource
-          else 
+          else
             "arn:aws:s3:::#{resource}"
           end
         end

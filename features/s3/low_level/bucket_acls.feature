@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,7 +49,6 @@ Feature: Bucket ACLs
     When I ask the client to get the bucket ACL
     Then the result should be a successful response
     And the client should have made a "GET" request to the bucket
-    And the result should return something that looks like a acl from its acl method
 
   @get
   Scenario: Get bucket ACL (OO interface)
@@ -57,4 +56,3 @@ Feature: Bucket ACLs
     When I ask the client to get the bucket ACL
     Then the result should be a successful response
     And the client should have made a "GET" request to the bucket
-    And the result should be an AccessControlList object containing the right data

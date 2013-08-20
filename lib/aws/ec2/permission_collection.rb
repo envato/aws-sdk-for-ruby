@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,7 +24,7 @@ module AWS
       include Core::Model
       include Enumerable
 
-      # @private
+      # @api private
       def initialize(resource, opts = {})
         @resource = resource
         super(opts)
@@ -35,8 +35,8 @@ module AWS
       def each(&block)
         resp = client.send(describe_call, describe_params)
         resp.send(inflected_permissions_attribute).each do |permission|
-          if permission.respond_to?(:user_id)
-            user_id = permission.user_id
+          if permission[:user_id]
+            user_id = permission[:user_id]
             yield(user_id)
           end
         end
@@ -57,7 +57,7 @@ module AWS
       def public?
         resp = client.send(describe_call, describe_params)
         resp.send(inflected_permissions_attribute).any? do |permission|
-          permission.respond_to?(:group) and permission.group == "all"
+          permission[:group] and permission[:group] == "all"
         end
       end
 
@@ -75,7 +75,7 @@ module AWS
       #   otherwise the resource is made private.
       # @return [nil]
       def public= value
-        params = value ? 
+        params = value ?
           { :add => [{ :group => "all" }] } :
           { :remove => [{ :group => "all" }] }
         client.send(modify_call, modify_params(params))
@@ -105,25 +105,25 @@ module AWS
         client.send(reset_call, reset_params)
       end
 
-      # @private
+      # @api private
       private
       def describe_call
         "describe_#{resource_name}_attribute"
       end
 
-      # @private
+      # @api private
       private
       def modify_call
         "modify_#{resource_name}_attribute"
       end
 
-      # @private
+      # @api private
       private
       def reset_call
         "reset_#{resource_name}_attribute"
       end
 
-      # @private
+      # @api private
       private
       def describe_params
         Hash[[["#{resource_name}_id".to_sym, @resource.send(:__resource_id__)],
@@ -131,25 +131,25 @@ module AWS
       end
       alias_method :reset_params, :describe_params
 
-      # @private
+      # @api private
       private
       def inflected_permissions_attribute
         Core::Inflection.ruby_name(permissions_attribute).to_sym
       end
 
-      # @private
+      # @api private
       private
       def permissions_attribute
         @resource.__permissions_attribute__
       end
 
-      # @private
+      # @api private
       private
       def resource_name
         @resource.send(:inflected_name)
       end
 
-      # @private
+      # @api private
       private
       def modify(action, *users)
         return if users.empty?
@@ -161,7 +161,7 @@ module AWS
         nil
       end
 
-      # @private
+      # @api private
       private
       def modify_params(modifications)
         Hash[[["#{resource_name}_id".to_sym, @resource.send(:__resource_id__)],

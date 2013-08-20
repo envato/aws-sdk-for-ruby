@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -44,20 +44,37 @@ module AWS
 
       context 'description' do
 
-        let(:resp) { 
+        let(:resp) {
           double("response",
             :request_type => :describe_table,
             :data => { "Table" => response_table }
           )
         }
 
-        let(:response_table) {{ 
+        let(:response_table) {{
           "TableName" => "MyTable",
           "ProvisionedThroughput" => {},
           "KeySchema" => {},
         }}
 
         let(:attributes) { table.attributes_from_response(resp) }
+
+        # this happens when you describe a table that is being deleted
+        it 'should be able to describe a table witout a key schema' do
+
+          response_table.delete('KeySchema')
+          response_table.should == {
+            "TableName" => "MyTable",
+            "ProvisionedThroughput" => {},
+          }
+
+          client.stub(:describe_table).and_return(resp)
+
+          table.exists?.should == true
+          table.hash_key.should == nil
+          table.range_key.should == nil
+
+        end
 
         context '#exists?' do
 
@@ -138,9 +155,9 @@ module AWS
 
           it 'should provide the creation_date_time attribute' do
             now = Time.now
-            response_table["CreationDateTime"] = Time.now.to_f
+            response_table["CreationDateTime"] = now
             # float equality comparison doesn't work reliably
-            attributes[:creation_date_time].should be_within(1).of(now)
+            attributes[:creation_date_time].should eq(now)
           end
 
           it 'should provide the status attribute' do
@@ -390,10 +407,23 @@ module AWS
           items = double('items')
 
           batch = double('batch').as_null_object
-          batch.should_receive(:table).with(table.name, attributes, items)
+          batch.should_receive(:table).with(table.name, attributes, items, {})
           BatchGet.stub(:new).and_return(batch)
 
           table.batch_get(attributes, items)
+
+        end
+
+        it 'passes along the :consistent_read option' do
+
+          attributes = double('attribute-list')
+          items = double('items')
+
+          batch = double('batch').as_null_object
+          batch.should_receive(:table).with(table.name, attributes, items, :consitent_read => true)
+          BatchGet.stub(:new).and_return(batch)
+
+          table.batch_get(attributes, items, :consitent_read => true)
 
         end
 
@@ -424,7 +454,77 @@ module AWS
 
       end
 
-    end
+      context 'batch write methods' do
 
+        let(:resp) {
+          r = client.stub_for(:batch_write_item)
+          r.data['UnprocessedItems'] = {}
+          r
+        }
+
+        context '#batch_put' do
+
+          it 'accept an array of item attributes to batch put' do
+            client.should_receive(:batch_write_item).with(:request_items => {
+              table.name => [
+                {:put_request=>{:item=>{'id'=>{:n=>'1'}}}},
+                {:put_request=>{:item=>{'id'=>{:n=>'2'}}}},
+              ]
+            }).and_return(resp)
+            table.batch_put([{ :id => 1 }, { :id => 2}])
+          end
+
+        end
+
+        context '#batch_delete' do
+
+          it 'accept an array of item ids to delete' do
+            client.should_receive(:batch_write_item).with(:request_items => {
+              table.name => [
+                {:delete_request=>{:key=>{:hash_key_element=>{:s=>"id1"}}}},
+                {:delete_request=>{:key=>{:hash_key_element=>{:s=>"id2"}}}},
+                {:delete_request=>{:key=>{:hash_key_element=>{:s=>"id3"}}}}
+              ]
+            }).and_return(resp)
+            table.batch_delete(%w(id1 id2 id3))
+          end
+
+          it 'accepts nested arrays for hash and range keys' do
+            client.should_receive(:batch_write_item).with(:request_items => {
+              table.name => [
+                {:delete_request=>{:key=>{:hash_key_element=>{:n=>"1"}, :range_key_element=>{:s=>"a"}}}},
+                {:delete_request=>{:key=>{:hash_key_element=>{:n=>"2"}, :range_key_element=>{:s=>"b"}}}}
+              ]
+            }).and_return(resp)
+            table.batch_delete([[1,'a'], [2,'b']])
+          end
+
+        end
+
+        context '#batch_write' do
+
+          it 'accepts :put and :delete options' do
+            client.should_receive(:batch_write_item).with(:request_items => {
+              table.name => [
+                {:put_request=>{:item=>{"id"=>{:n=>"1"}, "v"=>{:n=>"1"}}}},
+                {:put_request=>{:item=>{"id"=>{:n=>"2"}, "v"=>{:n=>"2"}}}},
+                {:delete_request=>{:key=>{:hash_key_element=>{:n=>"1"}}}},
+                {:delete_request=>{:key=>{:hash_key_element=>{:n=>"2"}}}},
+                {:delete_request=>{:key=>{:hash_key_element=>{:n=>"3"}}}}
+              ]
+            }).and_return(resp)
+            table.batch_write(
+              :put => [
+                { :id => 1, :v => 1 },
+                { :id => 2, :v => 2 },
+              ],
+              :delete => [1,2,3]
+            )
+          end
+
+        end
+
+      end
+    end
   end
 end

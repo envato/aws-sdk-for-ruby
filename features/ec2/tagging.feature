@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,7 +26,7 @@ Feature: EC2 Tagging
     When I call the "instance" resource
     Then the resource should be taggable
 
-  @instances @memoized
+  @instances @memoized @slow
   Scenario: Instance tags memoized from DescribeInstances
     Given I request to run an instance with the following parameters:
     | parameter | value        |
@@ -50,10 +50,10 @@ Feature: EC2 Tagging
   @images
   Scenario: Tagging an image
     Given I create an image with the following parameters:
-    | parameter      | value                                      |
-    | name           | my-image                                   |
-    | description    | foobar                                     |
-    | image_location | aws-sdk-amis/quickstart/image.manifest.xml |
+    | parameter      | value                            |
+    | name           | my-image                         |
+    | description    | foobar                           |
+    | image_location | ruby-sdk-amis/image.manifest.xml |
     And the image description should eventually be "foobar"
     When I call the "image" resource
     Then the resource should be taggable
@@ -61,10 +61,10 @@ Feature: EC2 Tagging
   @images @memoized
   Scenario: Image tags memoized from DescribeImages
     Given I create an image with the following parameters:
-    | parameter      | value                                      |
-    | name           | my-image                                   |
-    | description    | foobar                                     |
-    | image_location | aws-sdk-amis/quickstart/image.manifest.xml |
+    | parameter      | value                            |
+    | name           | my-image                         |
+    | description    | foobar                           |
+    | image_location | ruby-sdk-amis/image.manifest.xml |
     And the image description should eventually be "foobar"
     When I call the "image" resource
     Then the resource should memoize tags properly

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -41,9 +41,17 @@ Then /^the snapshot owner alias should be nil$/ do
 end
 
 Given /^I create a snapshot with description "([^\"]*)"$/ do |description|
-  Given %(I create a volume)
-  @snapshot = @volume.create_snapshot(description)
+
+  step %(I create a volume)
+
+  # it can take a while before the volume is in a state where snapshots
+  # are allowed
+  eventually do
+    @snapshot = @volume.create_snapshot(description)
+  end
+
   @created_snapshots << @snapshot
+
 end
 
 Then /^the snapshot description should be "([^\"]*)"$/ do |description|

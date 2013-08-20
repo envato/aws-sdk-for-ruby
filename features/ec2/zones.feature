@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ Feature: Availability Zones
     When I ask for the list of EC2 availability zones
     Then the result should contain the following zone information:
     | name       | region    |
-    | us-east-1a | us-east-1 |
+    | us-east-1b | us-east-1 |
 
   @memoized
   Scenario: List availability zones with memoization

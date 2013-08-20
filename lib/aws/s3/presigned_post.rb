@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 
 require 'uri'
-require 'base64'
 require 'time'
 
 module AWS
@@ -25,29 +24,32 @@ module AWS
     # stored.
     #
     # @example Form fields for uploading by file name
-    #  form = bucket.presigned_post(:key => "photos/${filename}")
-    #  form.url.to_s        # => "https://mybucket.s3.amazonaws.com/"
-    #  form.fields          # => { "AWSAccessKeyId" => "...", ... }
+    #
+    #   form = bucket.presigned_post(:key => "photos/${filename}")
+    #   form.url.to_s        # => "https://mybucket.s3.amazonaws.com/"
+    #   form.fields          # => { "AWSAccessKeyId" => "...", ... }
     #
     # @example Generating a minimal HTML form
-    #  form = bucket.objects.myobj.presigned_post
-    #  hidden_inputs = form.fields.map do |(name, value)|
-    #    %(<input type="hidden" name="#{name}" value="#{value}" />)
-    #  end
-    #  <<-END
-    #  <form action="#{form.url}"
-    #        method="post"
-    #        enctype="multipart/form-data">
-    #    #{hidden_inputs}
-    #    <input type="file" name="file" />
-    #  </form>
-    #  END
+    #
+    #   form = bucket.objects.myobj.presigned_post
+    #   hidden_inputs = form.fields.map do |(name, value)|
+    #     %(<input type="hidden" name="#{name}" value="#{value}" />)
+    #   end
+    #   <<-END
+    #   <form action="#{form.url}" method="post" enctype="multipart/form-data">
+    #     #{hidden_inputs}
+    #     <input type="file" name="file" />
+    #   </form>
+    #   END
     #
     # @example Restricting the size of the uploaded object
-    #  bucket.presigned_post(:content_length => 1..(10*1024))
+    #
+    #   bucket.presigned_post(:content_length => 1..(10*1024))
     #
     # @example Restricting the key prefix
-    #  bucket.presigned_post.where(:key).starts_with("photos/")
+    #
+    #   bucket.presigned_post.where(:key).starts_with("photos/")
+    #
     class PresignedPost
 
       include Core::Model
@@ -72,18 +74,7 @@ module AWS
       #   upload.  By default any size object may be uploaded.
       attr_reader :content_length
 
-      # @private
-      SPECIAL_FIELDS = [:cache_control,
-                        :content_type,
-                        :content_disposition,
-                        :content_encoding,
-                        :expires_header,
-                        :acl,
-                        :server_side_encryption,
-                        :success_action_redirect,
-                        :success_action_status]
-
-      # @private
+      # @api private
       attr_reader :conditions
 
       # @return [Array<String>] Additional fields which may be sent
@@ -96,13 +87,23 @@ module AWS
       #   the signature will expire an hour after it is generated.
       attr_reader :expires
 
+      # @api private
+      SPECIAL_FIELDS = [:key,
+                        :policy,
+                        :signature,
+                        :expires,
+                        :metadata,
+                        :content_length,
+                        :conditions,
+                        :ignore]
+      
       # Creates a new presigned post object.
       #
       # @param [Bucket] bucket The bucket to which data can be uploaded
       #   using the form fields.
       #
       # @param [Hash] opts Additional options for the upload.  Aside
-      #   from +:secure+, +:expires+, +:content_length+ and +:ignore+
+      #   from `:secure`, `:expires`, `:content_length` and `:ignore`
       #   the values provided here will be stored in the hash returned
       #   from the {#fields} method, and the policy in that hash will
       #   restrict their values to the values provided.  If you
@@ -147,19 +148,19 @@ module AWS
       #
       # @option options [Symbol] :acl A canned access control
       #   policy.  Valid values are:
-      #   * +:private+
-      #   * +:public_read+
-      #   * +:public_read_write+
-      #   * +:authenticated_read+
-      #   * +:bucket_owner_read+
-      #   * +:bucket_owner_full_control+
+      #   * `:private`
+      #   * `:public_read`
+      #   * `:public_read_write`
+      #   * `:authenticated_read`
+      #   * `:bucket_owner_read`
+      #   * `:bucket_owner_full_control`
       #
       # @option options [Symbol] :server_side_encryption (nil) If this
       #   option is set, the object will be stored using server side
-      #   encryption.  The only valid value is +:aes256+, which
+      #   encryption.  The only valid value is `:aes256`, which
       #   specifies that the object should be stored using the AES
       #   encryption algorithm with 256 bit keys.  By default, this
-      #   option uses the value of the +:s3_server_side_encryption+
+      #   option uses the value of the `:s3_server_side_encryption`
       #   option in the current configuration; for more information,
       #   see {AWS.config}.
       #
@@ -168,7 +169,7 @@ module AWS
       #
       # @option opts [Integer] :success_action_status The status
       #   code returned to the client upon successful upload if
-      #   +:success_action_redirect+ is not specified.  Accepts the
+      #   `:success_action_redirect` is not specified.  Accepts the
       #   values 200, 201, or 204 (default).
       #
       #   If the value is set to 200 or 204, Amazon S3 returns an
@@ -177,7 +178,7 @@ module AWS
       #   If the value is set to 201, Amazon S3 returns an XML
       #   document with a 201 status code.  For information on the
       #   content of the XML document, see
-      #   {POST Object}[http://docs.amazonwebservices.com/AmazonS3/2006-03-01/API/index.html?RESTObjectPOST.html].
+      #   [POST Object](http://docs.amazonwebservices.com/AmazonS3/2006-03-01/API/index.html?RESTObjectPOST.html).
       #
       # @option opts [Hash] :metadata A hash of the metadata fields
       #   included in the signed fields.  Additional metadata fields
@@ -197,8 +198,9 @@ module AWS
         @key = opts[:key]
         @secure = (opts[:secure] != false)
         @fields = {}
-        SPECIAL_FIELDS.each do |name|
-          @fields[name] = opts[name] if opts.key?(name)
+        # TODO normalize all values to @fields
+        opts.each do |opt_key, opt_val|
+          @fields[opt_key] = opt_val unless SPECIAL_FIELDS.include? opt_key
         end
         @metadata = opts[:metadata] || {}
         @content_length = range_value(opts[:content_length])
@@ -222,7 +224,7 @@ module AWS
 
       # @return [URI::HTTP, URI::HTTPS] The URL to which the form
       #   fields should be POSTed.  If you are using the fields in
-      #   an HTML form, this is the URL to put in the +action+
+      #   an HTML form, this is the URL to put in the `action`
       #   attribute of the form tag.
       def url
         req = Request.new
@@ -235,7 +237,7 @@ module AWS
       # {PresignedPost#where} for usage examples.
       class ConditionBuilder
 
-        # @private
+        # @api private
         def initialize(post, field)
           @post = post
           @field = field
@@ -254,17 +256,17 @@ module AWS
         # Specifies that the value of the field must begin with the
         # provided value.  If you are specifying a condition on the
         # "key" field, note that this check takes place after the
-        # +${filename}+ variable is expanded.  This is only valid
+        # `${filename}` variable is expanded.  This is only valid
         # for the following fields:
         #
-        # * +:key+
-        # * +:cache_control+
-        # * +:content_type+
-        # * +:content_disposition+
-        # * +:content_encoding+
-        # * +:expires_header+
-        # * +:acl+
-        # * +:success_action_redirect+
+        # * `:key`
+        # * `:cache_control`
+        # * `:content_type`
+        # * `:content_disposition`
+        # * `:content_encoding`
+        # * `:expires_header`
+        # * `:acl`
+        # * `:success_action_redirect`
         # * metadata fields (see {#where_metadata})
         def starts_with(prefix)
           @post.with_prefix_condition(@field, prefix)
@@ -272,8 +274,8 @@ module AWS
 
         # Specifies that the value of the field must be in the given
         # range.  This may only be used to constrain the
-        # +:content_length+ field,
-        # e.g. <tt>presigned_post.with(:conent_length).in(1..4)</tt>.
+        # `:content_length` field,
+        # e.g. `presigned_post.with(:conent_length).in(1..4)`.
         def in(range)
           @post.refine(:content_length => range)
         end
@@ -287,25 +289,23 @@ module AWS
       #  presigned_post.where(:acl).starts_with("bucket-owner")
       #
       # @param [Symbol] field The field for which a condition should
-      #  be added.  Valid values:
+      #  be added. In addition to any arbitrary values you have set,
+      #  the following values are also permitted:
       #
-      #  * +:key+
-      #  * +:content_length+
-      #  * +:cache_control+
-      #  * +:content_type+
-      #  * +:content_disposition+
-      #  * +:content_encoding+
-      #  * +:expires_header+
-      #  * +:acl+
-      #  * +:success_action_redirect+
-      #  * +:success_action_status+
+      #  * `:key`
+      #  * `:content_length`
+      #  * `:cache_control`
+      #  * `:content_type`
+      #  * `:content_disposition`
+      #  * `:content_encoding`
+      #  * `:expires_header`
+      #  * `:acl`
+      #  * `:success_action_redirect`
+      #  * `:success_action_status`
       #
       # @return [ConditionBuilder] An object that allows you to
       #   specify a condition on the field.
       def where(field)
-        raise ArgumentError.new("unrecognized field name #{field}") unless
-          [:key, :content_length, *SPECIAL_FIELDS].include?(field) or
-          field =~ /^x-amz-meta-/
         ConditionBuilder.new(self, field)
       end
 
@@ -316,7 +316,7 @@ module AWS
       # then S3 will reject it.
       #
       # @param [Symbol, String] field The name of the metadata
-      #   attribute.  For example, +:color+ corresponds to the
+      #   attribute.  For example, `:color` corresponds to the
       #   "x-amz-meta-color" field in the POST body.
       #
       # @return [ConditionBuilder] An object that allows you to
@@ -341,36 +341,37 @@ module AWS
       #   {#where}).
       def fields
 
-        signature = config.signer.sign(policy, "sha1")
+        secret = config.credential_provider.secret_access_key
+        signature = Core::Signer.sign(secret, policy, 'sha1')
 
         fields = {
-          "AWSAccessKeyId" => config.signer.access_key_id,
+          "AWSAccessKeyId" => config.credential_provider.access_key_id,
           "key" => key,
           "policy" => policy,
           "signature" => signature
         }.merge(optional_fields)
 
-        fields["x-amz-security-token"] = config.signer.session_token if
-          config.signer.session_token
+        if token = config.credential_provider.session_token
+          fields["x-amz-security-token"] = token
+        end
 
         fields.merge(optional_fields)
-
       end
 
-      # @private
+      # @api private
       def with_equality_condition(option_name, value)
         field_name = field_name(option_name)
         with_condition(option_name, Hash[[[field_name, value]]])
       end
 
-      # @private
+      # @api private
       def with_prefix_condition(option_name, prefix)
         field_name = field_name(option_name)
         with_condition(option_name,
                        ["starts-with", "$#{field_name}", prefix])
       end
 
-      # @private
+      # @api private
       def refine(opts)
         self.class.new(bucket, {
                          :conditions => conditions,
@@ -384,7 +385,7 @@ module AWS
                        merge(opts))
       end
 
-      # @private
+      # @api private
       private
       def with_condition(field, condition)
         conditions = self.conditions.dup
@@ -392,7 +393,7 @@ module AWS
         refine(:conditions => conditions)
       end
 
-      # @private
+      # @api private
       private
       def format_expiration
         time = expires || Time.now.utc + 60*60
@@ -410,7 +411,7 @@ module AWS
         time.utc.iso8601
       end
 
-      # @private
+      # @api private
       private
       def range_value(range)
         case range
@@ -421,7 +422,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def split_range(range)
         range = range_value(range)
@@ -431,11 +432,10 @@ module AWS
           range.end)]
       end
 
-      # @private
+      # @api private
       private
       def optional_fields
-        fields = (SPECIAL_FIELDS &
-                  @fields.keys).inject({}) do |fields, option_name|
+        fields = @fields.keys.inject({}) do |fields, option_name|
           fields[field_name(option_name)] =
             field_value(option_name)
           fields
@@ -448,7 +448,7 @@ module AWS
         fields
       end
 
-      # @private
+      # @api private
       private
       def field_name(option_name)
         case option_name
@@ -456,6 +456,8 @@ module AWS
           "Expires"
         when :server_side_encryption
           "x-amz-server-side-encryption"
+        when :key, "Key", :policy, "Policy"
+          option_name.to_s.downcase
         when :acl, :success_action_redirect, :success_action_status
           option_name.to_s
         else
@@ -467,7 +469,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def field_value(option_name)
         case option_name
@@ -485,29 +487,29 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def generate_conditions
 
         conditions = self.conditions.inject([]) do |list, (field, field_conds)|
           list + field_conds
-        end 
-        
+        end
+
         conditions << { "bucket" => bucket.name }
         conditions += key_conditions
         conditions += optional_fields.map { |(n, v)| Hash[[[n, v]]] }
         conditions += range_conditions
         conditions += ignored_conditions
-        
-        if config.signer.session_token
-          conditions << {"x-amz-security-token" => config.signer.session_token}
+
+        if token = config.credential_provider.session_token
+          conditions << { "x-amz-security-token" => token }
         end
 
         conditions
 
       end
 
-      # @private
+      # @api private
       private
       def ignored_conditions
         ignored_fields.map do |field|
@@ -515,7 +517,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def range_conditions
         if content_length
@@ -525,7 +527,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def key_conditions
         [if key && key.include?("${filename}")
@@ -537,7 +539,7 @@ module AWS
          end]
       end
 
-      # @private
+      # @api private
       private
       def build_uri(request)
         uri_class = secure? ? URI::HTTPS : URI::HTTP

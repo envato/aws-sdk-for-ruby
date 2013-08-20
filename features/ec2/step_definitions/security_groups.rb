@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,12 +13,28 @@
 
 Given /^I create a security group$/ do
   name = "ruby-integration-test-#{Time.now.to_i}"
-  Given "I create a security group named \"#{name}\""
+  step "I create a security group named \"#{name}\""
 end
 
 Given /^I create a security group named "([^\"]*)"$/ do |name|
   @security_group = @ec2.security_groups.create(name)
   @created_security_groups << @security_group
+end
+
+Given /^I create (\d+) security groups$/ do |count|
+  count.to_i.times do |i|
+    name = "ruby-integration-test-#{Time.now.to_i}-#{i}"
+    step "I create a security group named \"#{name}\""
+  end
+end
+
+Given /^I create (\d+) vpc security groups$/ do |count|
+  @security_groups = []
+  count.to_i.times do |n|
+    name = "integ-test-#{Time.now.to_i}-#{n}"
+    @security_groups << @vpc.security_groups.create(name)
+  end
+  @created_security_groups += @security_groups
 end
 
 Then /^I delete the security group$/ do
@@ -86,7 +102,7 @@ def security_groups_from_table table, owner_id
 end
 
 When /^I authorize "([^\"]*)" over port (\d+) for:$/ do |protocol, port, table|
-  ip_ranges = ip_ranges_from_table(table) 
+  ip_ranges = ip_ranges_from_table(table)
   groups = security_groups_from_table(table, @security_group.owner_id)
   @security_group.authorize_ingress(protocol, port, *(ip_ranges + groups))
 end
@@ -94,7 +110,7 @@ end
 Then /^The security group should allow "([^\"]*)" over port (\d+) for:$/ do |protocol, port, table|
 
   permissions = @security_group.ip_permissions
-  ip_ranges = ip_ranges_from_table(table) 
+  ip_ranges = ip_ranges_from_table(table)
   groups = security_groups_from_table(table, @security_group.owner_id)
   permissions.any? do |p|
     p.protocol.to_s == protocol and

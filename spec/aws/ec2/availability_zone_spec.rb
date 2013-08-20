@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -58,10 +58,9 @@ module AWS
         let(:resp) { client.new_stub_for(:describe_availability_zones) }
 
         before(:each) do
-          resp.stub(:availability_zone_info).
-            and_return([double("az",
-                               Hash[[[response_field, response_value],
-                                     [:zone_name, 'name']]])])
+          resp.data[:availability_zone_info] = [
+            { :zone_name => 'name', response_field => response_value },
+          ]
           client.stub(:describe_availability_zones).and_return(resp)
         end
 
@@ -75,6 +74,7 @@ module AWS
       end
 
       context '#region' do
+
         let(:attribute) { :region }
         let(:response_field) { :region_name }
         let(:response_value) { "foo" }
@@ -87,10 +87,6 @@ module AWS
 
           it 'should return a region object' do
             zone.region.should be_a(Region)
-          end
-
-          it 'should pass the config' do
-            zone.region.config.should be(config)
           end
 
           it 'should memoize the result' do
@@ -122,10 +118,10 @@ module AWS
 
         let(:attribute) { :messages }
         let(:response_field) { :message_set }
-        let(:response_value) { [double("msg 1",
-                                       :message => "something"),
-                                double("msg 2",
-                                       :message => "something else")] }
+        let(:response_value) { [
+          { :message => "something" },
+          { :message => "something else" },
+        ]}
 
         it_should_behave_like "availability zone attribute" do
 

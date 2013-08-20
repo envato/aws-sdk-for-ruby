@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,24 +14,24 @@
 module AWS
   module Record
 
-    # @private
+    # @api private
     module Conversion
 
-      # @private
+      # @api private
       def to_model
         self
       end
 
-      # @private
+      # @api private
       def to_key
         persisted? ? [id] : nil
       end
 
-      # @private
+      # @api private
       def to_param
         persisted? ? to_key.join('-') : nil
       end
-      
+
     end
 
   end

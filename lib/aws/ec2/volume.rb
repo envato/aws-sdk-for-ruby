@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,27 +17,27 @@ module AWS
     # Represents an Amazon EBS volume.
     #
     # @example Create an empty 15GiB volume and attach it to an instance
-    #  volume = ec2.volumes.create(:size => 15,
-    #                              :availability_zone => "us-east-1a")
-    #  attachment = volume.attach_to(ec2.instances["i-123"], "/dev/sdf")
-    #  sleep 1 until attachment.status != :attaching
+    #   volume = ec2.volumes.create(:size => 15,
+    #                               :availability_zone => "us-west-2a")
+    #   attachment = volume.attach_to(ec2.instances["i-123"], "/dev/sdf")
+    #   sleep 1 until attachment.status != :attaching
     #
     # @example Remove all attachments from a volume and then delete it
-    #  volume.attachments.each do |attachment|
-    #    attachment.delete(:force => true)
-    #  end
-    #  sleep 1 until volume.status == :available
-    #  volume.delete
+    #   volume.attachments.each do |attachment|
+    #     attachment.delete(:force => true)
+    #   end
+    #   sleep 1 until volume.status == :available
+    #   volume.delete
     #
     # @attr_reader [Symbol] status The status of the volume.
     #   Possible values:
     #
-    #   * +:creating+
-    #   * +:available+
-    #   * +:in_use+
-    #   * +:deleting+
-    #   * +:deleted+
-    #   * +:error+
+    #     * `:creating`
+    #     * `:available`
+    #     * `:in_use`
+    #     * `:deleting`
+    #     * `:deleted`
+    #     * `:error`
     #
     # @attr_reader [Integer] size The size of the volume in
     #   gigabytes.
@@ -47,11 +47,14 @@ module AWS
     #
     # @attr_reader [Time] create_time The time at which the volume
     #   was created.
+    #
+    # @attr_reader [String] iops
+    #
     class Volume < Resource
 
       include TaggedItem
 
-      # @private
+      # @api private
       def initialize(id, opts = {})
         @id = id
         super(opts)
@@ -66,16 +69,16 @@ module AWS
 
       attribute :snapshot_id, :static => true
 
-      attribute :size, :static => true do
-        translates_output {|value| value.to_i if value }
-      end
+      attribute :size, :static => true
 
-      attribute :availability_zone_name, :as => :availability_zone,
+      attribute :availability_zone_name, :from => :availability_zone,
         :static => true
 
       attribute :create_time, :static => true
 
       attribute :attachment_set
+
+      attribute :iops, :static => true
 
       populates_from(:create_volume) do |resp|
         resp if resp.volume_id == id
@@ -141,7 +144,7 @@ module AWS
       def exists?
         resp = client.describe_volumes(:filters => [
           { :name => 'volume-id', :values => [id] }
-        ]) 
+        ])
         resp.volume_index.key?(id)
       end
 

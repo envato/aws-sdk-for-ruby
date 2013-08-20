@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,7 @@ module AWS
       let(:client) { config.s3_client }
 
       let(:buckets) { BucketCollection.new(:config => config) }
- 
+
       context '#create' do
 
         it 'should call create_bucket with the bucket name' do
@@ -47,6 +47,32 @@ module AWS
           buckets.create('name', :foo => 'bar')
         end
 
+        it 'passes the acl option to #create_bucket as a string' do
+          client.should_receive(:create_bucket).with(hash_including({
+            :acl => 'public-read',
+          }))
+          buckets.create('name', :acl => :public_read)
+        end
+
+        it 'passes the grant options to #create_bucket' do
+
+          client.should_receive(:create_bucket).with(hash_including({
+            :grant_read => 'read',
+            :grant_write => 'write',
+            :grant_read_acp => 'read-acp',
+            :grant_write_acp => 'read-acp',
+            :grant_full_control => 'full-control',
+          }))
+
+          buckets.create('name',
+            :grant_read => 'read',
+            :grant_write => 'write',
+            :grant_read_acp => 'read-acp',
+            :grant_write_acp => 'read-acp',
+            :grant_full_control => 'full-control')
+
+        end
+
         it 'sets no location constraint by default' do
           config.stub(:s3_endpoint).and_return('s3.amazonaws.com')
           buckets.client.should_receive(:create_bucket).with(:bucket_name => 'name')
@@ -65,18 +91,18 @@ module AWS
           # location constraint should be EU
           config.stub(:s3_endpoint).
             and_return('s3-eu-west-1.amazonaws.com')
-          
+
           buckets.client.should_receive(:create_bucket).
             with(hash_including(:location_constraint => 'eek!'))
 
           buckets.create('name', :location_constraint => 'eek!')
-          
+
         end
 
         it 'guesses the location constraint for other endpoints' do
 
           config.stub(:s3_endpoint).and_return('s3-fake-2.amazonaws.com')
-          
+
           buckets.client.should_receive(:create_bucket).
             with(hash_including(:location_constraint => 'fake-2'))
 

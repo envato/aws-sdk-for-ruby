@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -47,3 +47,32 @@ Feature: EC2 Elastic IPs
     Then exactly 1 request should have been made like:
     | TYPE  | NAME   | VALUE             |
     | param | Action | DescribeAddresses |
+
+  @vpc @subnet @instances @elastic_ips @internet_gatweays @slow @wip
+  Scenario: Working with VPC elastic IPs
+    Given I create a vpc with the cidr block "10.0.0.0/16"
+    And I create an internet gateway
+    And I attach the internet gateway to the vpc
+    And I create a subnet with the with the cidr block "10.0.0.0/16"
+    And I allocate a VPC elastic ip
+    When I request to run vpc instance in the subnet
+    Then the instance status should eventually be "running"
+    When I associate the elastic ip with the instance
+    Then the instance public ip address should match the elastic ip address
+    When I disassociate the elastic ip address
+    And I release the elastic ip address
+    Then the elastic ip should not exits
+
+  @vpc @subnet @instances @elastic_ips @internet_gatweays @slow
+  Scenario: Associating an elastic ip with a network interface
+    Given I create a vpc
+    And I create a subnet
+    And I create an internet gateway
+    And I attach the internet gateway to the vpc
+    And I create a network interface
+    And I allocate a VPC elastic ip
+    When I associate the network interface to the elastic ip
+    Then the elastic ip should be assigned to the network interface
+    # cleanup some (the normal test cleanup can get the rest)
+    When I disassociate the elastic ip address
+    And I release the elastic ip address

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,7 +17,7 @@ module AWS
 
   module FooService
     module Errors
-      include Core::LazyErrorClasses
+      extend Core::LazyErrorClasses
     end
   end
 
@@ -45,6 +45,16 @@ module AWS
         it 'should generate named classes' do
           mod.error_class("Foo.Bar").name.
             should == "AWS::FooService::Errors::Foo::Bar"
+        end
+
+        it 'works with codes that are already Ruby class names' do
+          mod.error_class("Range.Bar").name.
+            should == "AWS::FooService::Errors::Range::Bar"
+        end
+
+        it 'works with codes that are already defined in Core' do
+          mod.error_class("Resource.Bar").name.
+            should == "AWS::FooService::Errors::Resource::Bar"
         end
 
       end

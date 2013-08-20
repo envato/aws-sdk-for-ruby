@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,7 +29,7 @@ module AWS
       # @return [MultipartUpload] The upload to which the parts belong.
       attr_reader :upload
 
-      # @private
+      # @api private
       def initialize(upload, opts = {})
         @upload = upload
         super
@@ -43,16 +43,16 @@ module AWS
         UploadedPart.new(upload, number)
       end
 
-      # @private
+      # @api private
       protected
       def each_member_in_page(page, &block)
         page.parts.each do |part_info|
-          part = UploadedPart.new(upload, part_info.part_number)
+          part = UploadedPart.new(upload, part_info.part_number, :etag => part_info.etag)
           yield(part)
         end
       end
 
-      # @private
+      # @api private
       protected
       def list_options(options)
         opts = super
@@ -62,17 +62,17 @@ module AWS
         opts
       end
 
-      # @private
+      # @api private
       protected
       def limit_param; :max_parts; end
 
-      # @private
+      # @api private
       protected
       def list_request(options)
         client.list_parts(options)
       end
 
-      # @private
+      # @api private
       protected
       def pagination_markers
         [:part_number_marker]

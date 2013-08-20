@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+
+require 'timeout'
 
 module AWS::Core
 
@@ -108,14 +110,14 @@ module AWS::Core
   # http_verb - expected http method, PUT, GET, POST or DELETE
   shared_examples_for "an aws http request" do |http_verb|
 
-    it_should_behave_like "supports async option"
-  
+    #it_should_behave_like "supports async option"
+
     before(:each) do
       Kernel.stub!(:sleep)
     end
 
     let(:server_error_client) {
-      client.with_http_handler do |request, response| 
+      client.with_http_handler do |request, response|
         response.status = 500
       end
     }
@@ -139,34 +141,6 @@ module AWS::Core
       new_client.config.stub(:use_ssl?).and_return(use_ssl)
       new_client.send(method, opts)
       use_ssl_state.should == use_ssl
-
-    end
-
-    it 'should set ssl_verify_peer to the current config ssl_verify_peer? value' do
-
-      ssl_verify_peer = double('ssl_peer_state')
-
-      ssl_peer_state = nil
-      new_client = client.with_http_handler{|request, response|
-        ssl_peer_state = request.ssl_verify_peer?
-      }
-      new_client.config.stub(:ssl_verify_peer?).and_return(ssl_verify_peer)
-      new_client.send(method, opts)
-      ssl_peer_state.should == ssl_verify_peer
-
-    end
-
-    it 'should set ssl_ca_file to the current config ssl_ca_file value' do
-
-      ssl_ca_file = double('ssl_ca_state')
-
-      ssl_ca_state = nil
-      new_client = client.with_http_handler{|request, response|
-        ssl_ca_state = request.ssl_ca_file
-      }
-      new_client.config.stub(:ssl_ca_file).and_return(ssl_ca_file)
-      new_client.send(method, opts)
-      ssl_ca_state.should == ssl_ca_file
 
     end
 
@@ -205,7 +179,7 @@ module AWS::Core
       statuses = [500, 200]
       client.with_http_handler{|req, resp|
         resp.status = statuses.shift
-        requests_made += 1 
+        requests_made += 1
       }.send(method, opts)
       requests_made.should == 2
     end
@@ -215,7 +189,7 @@ module AWS::Core
       statuses = [503, 200]
       client.with_http_handler{|req, resp|
         resp.status = statuses.shift
-        requests_made += 1 
+        requests_made += 1
       }.send(method, opts)
       requests_made.should == 2
     end
@@ -227,7 +201,7 @@ module AWS::Core
       client.with_http_handler{|req, resp|
         resp.status = statuses.shift
         resp.body = bodies.shift
-        requests_made += 1 
+        requests_made += 1
       }.send(method, opts)
       requests_made.should == 2
     end
@@ -242,7 +216,7 @@ module AWS::Core
           resp.body = "<ok/>"
         else
           timed_out = true
-          resp.timeout = true
+          resp.timeout = Timeout::Error.new
         end
       }.send(method, opts)
       requests_made.should == 2
@@ -253,8 +227,8 @@ module AWS::Core
       begin
         client.with_http_handler{|req, resp|
           resp.status = 500
-          requests_made += 1 
-        }.send(method, opts) 
+          requests_made += 1
+        }.send(method, opts)
       rescue AWS::Errors::ServerError
       end
       requests_made.should == 4
@@ -278,11 +252,11 @@ module AWS::Core
       requests_made = 0
       new_client = client.with_http_handler{|req, resp|
         resp.status = 500
-        requests_made += 1 
+        requests_made += 1
       }
       new_client.config.stub(:max_retries).and_return(5)
       begin
-        new_client.send(method, opts) 
+        new_client.send(method, opts)
       rescue AWS::Errors::ServerError
       end
       requests_made.should == 6
@@ -296,27 +270,47 @@ module AWS::Core
       }.should raise_error(AWS::Errors::ServerError)
     end
 
-    it 'should re-raise the timeout error after retries fail' do
-      lambda do
+    it 'should raise a network error after retries fail due to timeout' do
+      err = Timeout::Error.new
+      raised = false
+      begin
         client.with_http_handler{|req, resp|
-          resp.timeout = true
+          resp.timeout = err
         }.send(method, opts)
-      end.should raise_error(Timeout::Error)
+      rescue Exception => e
+        e.should be(err)
+        raised = true
+      end
+      raised.should be(true)
+    end
+
+    it 'should raise a network error after retries fail' do
+      err = StandardError.new('oops')
+      raised = false
+      begin
+        client.with_http_handler{|req, resp|
+          resp.timeout = err
+        }.send(method, opts)
+      rescue Exception => e
+        e.should be(err)
+        raised = true
+      end
+      raised.should be(true)
     end
 
     it 'should sleep between retries' do
       Kernel.should_receive(:sleep).exactly(3).times
-      begin 
+      begin
         client.with_http_handler{|req, resp|
           resp.status = 500
-        }.send(method, opts); 
+        }.send(method, opts);
       rescue
       end
     end
 
     it 'it backs off exponentially' do
       Kernel.should_receive(:sleep).with(0.3).with(0.6).with(1.2)
-      begin 
+      begin
         client.with_http_handler{|req, resp|
           resp.status = 500
         }.send(method, opts)
@@ -327,7 +321,7 @@ module AWS::Core
     it 'it uses a randomized scaling factor for throttled requests' do
       Kernel.stub!(:rand) { 0.5 }
       Kernel.should_receive(:sleep).with(0.55).with(1.1).with(2.2)
-      begin 
+      begin
         client.with_http_handler{|req, resp|
           resp.status = 500
           resp.body = "<FOO><Code>Throttling</Code></FOO>"
@@ -374,7 +368,7 @@ module AWS::Core
 
     context 'endpoint' do
 
-      it 'should defualt the endpoint given in the client config' do
+      it 'should default the endpoint given in the client config' do
         stub_client = client.with_options(:s3_endpoint => 'xyz.com',
                                           :simple_db_endpoint => 'xyz.com',
                                           :ec2_endpoint => 'xyz.com',
@@ -418,13 +412,13 @@ module AWS::Core
     end
 
     context 'logging' do
-      
+
       let(:service) { described_class.to_s.gsub(/^AWS::/, '') }
 
       let(:logger) { double('logger') }
 
-      let(:logging_client) { 
-        client.class.new(:config => client.config.with(:logger => logger)) 
+      let(:logging_client) {
+        client.class.new(:config => client.config.with(:logger => logger))
       }
 
       it 'should log the client request' do
@@ -433,11 +427,11 @@ module AWS::Core
       end
 
       it 'should log server errors' do
-        logger.should_receive(:error)
+        logger.should_receive(:info)
         begin
           logging_client.with_http_handler do |req,resp|
             resp.status = 502
-            resp.body = 'Service busy' 
+            resp.body = 'Service busy'
           end.send(method, opts)
         rescue AWS::Errors::ServerError
         end
@@ -451,23 +445,28 @@ module AWS::Core
 
       before(:each) do
         fake_request
-        client.stub(:new_request).and_return(fake_request) 
+        client.stub(:new_request).and_return(fake_request)
       end
 
       it 'should call add_authorization! on the request' do
-        fake_request.should_receive(:add_authorization!).with(client.signer)
+        fake_request.
+          should_receive(:add_authorization!).
+          with(client.credential_provider)
         client.send(method, opts)
       end
 
-      it 'should call add_authorization! with the signer' do
+      it 'should call add_authorization! with the credential provider' do
 
-        fake_signer = double("signer",
+        credential_provider = double("credential_provider",
            :access_key_id => "foo",
-           :sign => "bar")
+           :secret_access_key => "bar",
+           :session_token => "yuck")
 
-        client.stub(:signer).and_return(fake_signer)
+        client.stub(:credential_provider).and_return(credential_provider)
 
-        fake_request.should_receive(:add_authorization!).with(fake_signer)
+        fake_request.
+          should_receive(:add_authorization!).
+          with(credential_provider)
 
         client.send(method, opts)
 
@@ -589,7 +588,7 @@ module AWS::Core
         new_client = client.with_http_handler do |req, resp|
           resp.status = 500
         end
-        
+
         http_handler = new_client.config.http_handler
         Kernel.should_receive(:sleep).with(0.3).with(0.6).with(1.2)
 
@@ -609,7 +608,7 @@ module AWS::Core
       it 'should retry timeouts' do
 
         new_client = client.with_http_handler do |req, resp|
-          resp.timeout = true
+          resp.timeout = TimeoutError.new
         end
 
         http_handler = new_client.config.http_handler
@@ -621,7 +620,7 @@ module AWS::Core
         response.on_complete do |status|
           complete = true
           status.should == :failure
-          response.error.should be_a(Timeout::Error)
+          response.error.should be_a(TimeoutError)
         end
 
         sleep 0.001 until complete
@@ -631,7 +630,7 @@ module AWS::Core
       it 'should build a new request for each retry' do
         seen_requests = []
         new_client = client.with_http_handler do |req, resp|
-          resp.timeout = true
+          resp.timeout = TimeoutError.new
           seen_requests << req
         end
 
@@ -678,22 +677,13 @@ module AWS::Core
 
         resp = client.send(method, opts.merge(:async => true))
 
-        http_resp.stub(:body).and_return response_body
+        http_resp.stub(:body).and_return(response_body)
         http_resp.status = 200
         handler_handle.signal_success
       end
 
     end
 
-  end
-
-  shared_examples_for 'parses XML response' do |response_class, *args|
-    it_should_behave_like 'parses response' do
-      before(:each) do
-        response_class.should_receive(:parse).
-          with(response_body, anything())
-      end
-    end
   end
 
 end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,45 +16,45 @@ module AWS
 
     # Represents a collection of S3 objects.
     #
-    # == Getting an S3Object by Key
+    # ## Getting an S3Object by Key
     #
     # If you know the key of the object you want, you can reference it this way:
     #
-    #   # this will not make any requests against S3
-    #   object = bucket.objects['foo.jpg']
-    #   object.key #=> 'foo.jpg'
-    # 
-    # == Finding objects with a Prefix
+    #     # this will not make any requests against S3
+    #     object = bucket.objects['foo.jpg']
+    #     object.key #=> 'foo.jpg'
+    #
+    # ## Finding objects with a Prefix
     #
     # Given a bucket with the following keys:
     #
-    #   photos/sunset.jpg
-    #   photos/sunrise.jpg
-    #   photos/winter.jpg
-    #   videos/comedy.mpg
-    #   videos/dancing.mpg
+    #     photos/sunset.jpg
+    #     photos/sunrise.jpg
+    #     photos/winter.jpg
+    #     videos/comedy.mpg
+    #     videos/dancing.mpg
     #
     # You can list objects that share a prefix:
     #
-    #   bucket.objects.with_prefix('videos').collect(&:key)
-    #   #=> ['videos/comedy.mpg', 'videos/dancing.mpg']
-    #   
-    # == Exploring Objects with a Tree Interface
+    #     bucket.objects.with_prefix('videos').collect(&:key)
+    #     #=> ['videos/comedy.mpg', 'videos/dancing.mpg']
+    #
+    # ## Exploring Objects with a Tree Interface
     #
     # Given a bucket with the following keys:
     #
-    #   README.txt
-    #   videos/wedding.mpg
-    #   videos/family_reunion.mpg
-    #   photos/2010/house.jpg
-    #   photos/2011/fall/leaves.jpg
-    #   photos/2011/summer/vacation.jpg
-    #   photos/2011/summer/family.jpg
+    #     README.txt
+    #     videos/wedding.mpg
+    #     videos/family_reunion.mpg
+    #     photos/2010/house.jpg
+    #     photos/2011/fall/leaves.jpg
+    #     photos/2011/summer/vacation.jpg
+    #     photos/2011/summer/family.jpg
     #
-    #   tree = bucket.objects.with_prefix('photos').as_tree
+    #     tree = bucket.objects.with_prefix('photos').as_tree
     #
-    #   directories = tree.children.select(&:branch?).collect(&:prefix)
-    #   #=> ['photos/2010', 'photos/2011']
+    #     directories = tree.children.select(&:branch?).collect(&:prefix)
+    #     #=> ['photos/2010', 'photos/2011']
     #
     class ObjectCollection
 
@@ -62,7 +62,8 @@ module AWS
       include Enumerable
       include PrefixAndDelimiterCollection
 
-      # @param [Bucket] The S3 bucket this object collection belongs to.
+      # @param [Bucket] bucket The S3 bucket this object collection belongs to.
+      # @param [Hash] options
       def initialize(bucket, options = {})
         @bucket = bucket
         super
@@ -80,14 +81,14 @@ module AWS
       #
       # @param [String] key Where in S3 to write the object.
       # @return [S3Object]
-      def create key, *args
-        self[key].write(*args)
+      def create key, *args, &block
+        self[key].write(*args, &block)
       end
 
       # Returns an S3Object given its name.  For example:
       #
       # @example
-      #   
+      #
       #   object = bucket.objects['file.txt']
       #   object.class #=> S3Object
       #
@@ -104,31 +105,50 @@ module AWS
 
       # Deletes the objects provided in as few requests as possible.
       #
-      #   # delete 2 objects (by key) in a single request
-      #   bucket.objects.delete('abc', 'xyz')
+      #     # delete 2 objects (by key) in a single request
+      #     bucket.objects.delete('abc', 'xyz')
       #
       # You can delete objects also by passing their S3Object representation:
       #
-      #   to_delete = []
-      #   to_delete << buckets.objects['foo']
-      #   to_delete << buckets.objects['bar']
+      #     to_delete = []
+      #     to_delete << buckets.objects['foo']
+      #     to_delete << buckets.objects['bar']
       #
-      #   bucket.objects.delete(to_delete)
+      #     bucket.objects.delete(to_delete)
       #
-      # @param [Mixed] objects One or more objects to delete.  Each object
-      #   can be one of the following:
+      # @overload delete(objects)
+      #   @param [Mixed] objects One or more objects to delete.  Each object
+      #     can be one of the following:
       #
-      #   * An object key (string)
-      #   * A hash with :key and :version_id (for versioned objects)
-      #   * An {S3Object} instance
-      #   * An {ObjectVersion} instance
+      #       * An object key (string)
+      #       * A hash with :key and :version_id (for versioned objects)
+      #       * An {S3Object} instance
+      #       * An {ObjectVersion} instance
       #
-      # @raise [BatchDeleteError] If any of the objects failed to delete, 
+      # @overload delete(objects, options)
+      #   Deletes multiple objects, with additional options. The array can
+      #   contain any of the types of objects the first method invocation style
+      #   accepts.
+      #   @param [Array] objects One or more objects to delete.
+      #   @param [Hash] options Optional headers to pass on.
+      #
+      # @raise [BatchDeleteError] If any of the objects failed to delete,
       #   a BatchDeleteError will be raised with a summary of the errors.
       #
       # @return [nil]
       #
       def delete *objects
+
+        # Detect and retrieve options from the end of the splat.
+        if
+          objects.size == 2 and
+          objects[0].is_a?(Array) and
+          objects[1].is_a?(Hash)
+        then
+          client_opts = objects.pop
+        else
+          client_opts = {}
+        end
 
         objects = objects.flatten.collect do |obj|
           case obj
@@ -136,7 +156,7 @@ module AWS
           when Hash          then obj
           when S3Object      then { :key => obj.key }
           when ObjectVersion then { :key => obj.key, :version_id => obj.version_id }
-          else  
+          else
             msg = "objects must be keys (strings or hashes with :key and " +
                   ":version_id), S3Objects or ObjectVersions, got " +
                   object.class.name
@@ -145,7 +165,6 @@ module AWS
         end
 
         batch_helper = BatchHelper.new(1000) do |batch|
-          client_opts = {}
           client_opts[:bucket_name] = bucket.name
           client_opts[:quiet] = true
           client_opts[:objects] = batch
@@ -166,29 +185,29 @@ module AWS
 
         batch_helper.complete!
 
-        raise Errors::BatchDeleteError.new(error_counts) unless 
+        raise Errors::BatchDeleteError.new(error_counts) unless
           error_counts.empty?
 
         nil
 
       end
 
-      # Deletes each object in the collection that returns a true value 
+      # Deletes each object in the collection that returns a true value
       # from block passed to this method.  Deletes are batched for efficiency.
       #
-      #   # delete text files in the 2009 "folder"
-      #   bucket.objects.with_prefix('2009/').delete_if {|o| o.key =~ /\.txt$/ }
+      #     # delete text files in the 2009 "folder"
+      #     bucket.objects.with_prefix('2009/').delete_if {|o| o.key =~ /\.txt$/ }
       #
       # @yieldparam [S3Object] object
       #
-      # @raise [BatchDeleteError] If any of the objects failed to delete, 
+      # @raise [BatchDeleteError] If any of the objects failed to delete,
       #   a BatchDeleteError will be raised with a summary of the errors.
       #
       def delete_if &block
 
         error_counts = {}
 
-        batch_helper = BatchHelper.new(1000) do |objects| 
+        batch_helper = BatchHelper.new(1000) do |objects|
           begin
             delete(objects)
           rescue Errors::BatchDeleteError => error
@@ -205,7 +224,7 @@ module AWS
 
         batch_helper.complete!
 
-        raise Errors::BatchDeleteError.new(error_counts) unless 
+        raise Errors::BatchDeleteError.new(error_counts) unless
           error_counts.empty?
 
         nil
@@ -222,7 +241,7 @@ module AWS
       #
       #   bucket.objects.with_prefix('2009/').delete_all
       #
-      # @raise [BatchDeleteError] If any of the objects failed to delete, 
+      # @raise [BatchDeleteError] If any of the objects failed to delete,
       #   a BatchDeleteError will be raised with a summary of the errors.
       #
       # @return [Array] Returns an array of results
@@ -242,7 +261,7 @@ module AWS
           end
         end
 
-        raise Errors::BatchDeleteError.new(error_counts) unless 
+        raise Errors::BatchDeleteError.new(error_counts) unless
           error_counts.empty?
 
         nil
@@ -254,16 +273,16 @@ module AWS
       # Use break or raise an exception to terminate the enumeration.
       #
       # @param [Hash] options
-      # @option options [Integer] :limit (nil) The maximum number of 
+      # @option options [Integer] :limit (nil) The maximum number of
       #   objects to yield.
       # @option options [Integer] :batch_size (1000) The number of objects to
-      #   fetch each request to S3.  Maximum is 1000 keys at time. 
+      #   fetch each request to S3.  Maximum is 1000 keys at time.
       # @return [nil]
       def each options = {}, &block
         super
       end
 
-      # @private
+      # @api private
       protected
       def each_member_in_page(page, &block)
         super
@@ -272,33 +291,36 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def list_request options
         client.list_objects(options)
       end
 
-      # @private
+      # @api private
       protected
       def limit_param
         :max_keys
       end
 
-      # @private
+      # @api private
       protected
       def next_markers page
-        marker = (last = page.contents.last and last.key)
-        if marker.nil?
-          raise 'Unable to find marker in S3 list objects response'
+        if page[:next_marker]
+          marker = page[:next_marker]
+        elsif page[:contents].size > 0
+          marker = page[:contents].last[:key]
         else
-          { :marker => marker }
+          raise 'Unable to find marker in S3 list objects response'
         end
+
+        { :marker => marker }
       end
 
       # processes items in batches of 1k items
-      # @private
+      # @api private
       class BatchHelper
-        
+
         def initialize batch_size, &block
           @batch_size = batch_size
           @block = block

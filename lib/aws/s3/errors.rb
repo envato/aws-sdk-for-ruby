@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,18 +18,22 @@ module AWS
     # types that S3 can return.  You can use these classes to rescue
     # specific errors, for example:
     #
-    #  begin
-    #    S3.new.buckets.mybucket.
-    #      objects.myobj.write("HELLO")
-    #  rescue S3::Errors::NoSuchBucket => e
-    #    S3.new.buckets.create("mybucket")
-    #    retry
-    #  end
+    #     begin
+    #       S3.new.buckets.mybucket.
+    #         objects.myobj.write("HELLO")
+    #     rescue S3::Errors::NoSuchBucket => e
+    #       S3.new.buckets.create("mybucket")
+    #       retry
+    #     end
     #
     # All errors raised as a result of error responses from the
     # service are instances of either {ClientError} or {ServerError}.
-    # @private
     module Errors
+
+      # @api private
+      GRAMMAR = Core::XML::Grammar.customize
+
+      extend Core::LazyErrorClasses
 
       class BatchDeleteError < StandardError
 
@@ -52,10 +56,8 @@ module AWS
 
         include AWS::Errors::ClientError
 
-        def code; "NotModified"; end
-
         def initialize(req, resp)
-          super(req, resp, "Not Modified")
+          super(req, resp, "NotModified", "Not Modified")
         end
 
       end
@@ -67,18 +69,26 @@ module AWS
 
         include AWS::Errors::ClientError
 
-        def code; "NoSuchKey"; end
-
-        def initialize(req, resp)
-          super(req, resp, "No Such Key")
+        def initialize(req, resp, code = nil, message = nil)
+          super(req, resp, "NoSuchKey", "No Such Key")
         end
 
       end
 
-      BASE_ERROR_GRAMMAR = Client::XML::Error
+      # This error is special, because S3 must first retrieve the client
+      #   side encryption key in it's encrypted form before finding if the
+      #   key is incorrect.
+      class IncorrectClientSideEncryptionKey < AWS::Errors::Base
 
-      include Core::LazyErrorClasses
+        include AWS::Errors::ClientError
 
+        def initialize(msg)
+          super("",
+                "",
+                "IncorrectClientSideEncryptionKey",
+                msg)
+        end
+      end
     end
   end
 end

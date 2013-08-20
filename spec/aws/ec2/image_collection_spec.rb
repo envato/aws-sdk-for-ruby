@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,11 +27,10 @@ module AWS
         let(:client_method) { :describe_images }
 
         def stub_two_members(response)
-          response.stub(:images_set).
-            and_return([double("image 1",
-                               :image_id => "ami-123"),
-                        double("image 2",
-                               :image_id => "ami-321")])
+          response.data[:images_set] = [
+            { :image_id => 'ami-123' },
+            { :image_id => 'ami-321' },
+          ]
         end
 
         it_should_behave_like "a tagged ec2 collection"

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,7 +15,7 @@ module AWS
   module Record
 
     # Base class for all validators
-    # @private
+    # @api private
     class Validator
 
       # these should be defined in subclasses
@@ -25,12 +25,12 @@ module AWS
 
         @options = attribute_names.last.is_a?(Hash) ? attribute_names.pop : {}
 
-        @attribute_names = attribute_names
+        @attribute_names = attribute_names.map(&:to_s)
 
         reject_unknown_options
 
         ensure_type([Symbol, Proc], :if, :unless)
-        ensure_is([:save, :create, :update], :on) 
+        ensure_is([:save, :create, :update], :on)
 
         setup(record_class)
 
@@ -44,7 +44,7 @@ module AWS
       attr_reader :options
 
       def validate record
-        if 
+        if
           passes_on_condition?(record) and
           passes_if_condition?(record) and
           passes_unless_condition?(record)
@@ -53,12 +53,12 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def setup klass
       end
 
-      # @private
+      # @api private
       protected
       def each_value value, &block
         case value
@@ -67,7 +67,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def add_accessors klass, *accessors
 
@@ -84,7 +84,7 @@ module AWS
           end
 
           unless methods.include?(setter)
-            klass.send(:attr_writer, attr) 
+            klass.send(:attr_writer, attr)
             klass.send(:public, setter)
           end
 
@@ -92,23 +92,32 @@ module AWS
 
       end
 
-      # @private
+      # @api private
       protected
       def validate_attributes record
         attribute_names.each do |attribute_name|
           value = read_attribute_for_validation(record, attribute_name)
-          next if value.nil? and options[:allow_nil]
+          next if (value.nil? && options[:allow_nil]) || (blank?(value) && options[:allow_blank])
           validate_attribute(record, attribute_name, value)
         end
       end
 
-      # @private
+      def blank? value
+        case value
+        when nil        then true
+        when String     then value !~ /\S/
+        else
+          !value
+        end
+      end
+
+      # @api private
       protected
       def read_attribute_for_validation(record, attribute_name)
         record.send(attribute_name)
       end
 
-      # @private
+      # @api private
       def reject_unknown_options
         invalid_keys = options.keys - self.class::ACCEPTED_OPTIONS
         if invalid_keys.length == 1
@@ -119,7 +128,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def passes_if_condition? record
         case options[:if]
@@ -131,7 +140,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def passes_unless_condition? record
         case options[:unless]
@@ -143,7 +152,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       private
       def passes_on_condition? record
         case options[:on]
@@ -156,7 +165,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def ensure_type type_or_types, *keys
 
@@ -189,7 +198,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def ensure_exclusive *key_groups
         key_groups.each do |key_group|
@@ -205,7 +214,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def ensure_present *keys
         keys.each do |k|
@@ -215,7 +224,7 @@ module AWS
         end
       end
 
-      # @private
+      # @api private
       protected
       def ensure_at_least_one *keys
         found = keys.select{|k| options.has_key?(k) }

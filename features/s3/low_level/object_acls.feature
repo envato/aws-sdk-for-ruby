@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,7 +49,6 @@ Feature: Object ACLs
     When I ask the client to get the object ACL
     Then the result should be a successful response
     And the client should have made a "GET" request to the object ACL
-    And the result should return something that looks like a acl from its acl method
 
   @get
   Scenario: Get object ACL (OO interface)

@@ -1,0 +1,339 @@
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+
+---
+:attach_elastic_load_balancer: "Calls the AttachElasticLoadBalancer API operation.\n@param
+  [Hash] options\n  * `:elastic_load_balancer_name` - *required* - (String) \n  *
+  `:layer_id` - *required* - (String) \n@return [Core::Response]"
+:clone_stack: "Calls the CloneStack API operation.\n@param [Hash] options\n  * `:source_stack_id`
+  - *required* - (String) \n  * `:name` - (String) \n  * `:region` - (String) \n  *
+  `:attributes` - (Hash&lt;<String,String>) \n  * `:service_role_arn` - *required*
+  - (String) \n  * `:default_instance_profile_arn` - (String) \n  * `:default_os`
+  - (String) \n  * `:hostname_theme` - (String) \n  * `:default_availability_zone`
+  - (String) \n  * `:custom_json` - (String) \n  * `:configuration_manager` - (Hash)
+  \n    * `:name` - (String) \n    * `:version` - (String) \n  * `:use_custom_cookbooks`
+  - (Boolean) \n  * `:custom_cookbooks_source` - (Hash) \n    * `:type` - (String)
+  Valid values include:\n      * `git`\n      * `svn`\n      * `archive`\n      *
+  `s3`\n    * `:url` - (String) \n    * `:username` - (String) \n    * `:password`
+  - (String) \n    * `:ssh_key` - (String) \n    * `:revision` - (String) \n  * `:default_ssh_key_name`
+  - (String) \n  * `:clone_permissions` - (Boolean) \n  * `:clone_app_ids` - (Array&lt;<String>)
+  \n  * `:default_root_device_type` - (String) Valid values include:\n    * `ebs`\n
+  \   * `instance-store`\n@return [Core::Response] The `#data` method of the response
+  object returns a hash with the following structure:\n\n  * `:stack_id` - (String)"
+:create_app: "Calls the CreateApp API operation.\n@param [Hash] options\n  * `:stack_id`
+  - *required* - (String) \n  * `:shortname` - (String) \n  * `:name` - *required*
+  - (String) \n  * `:description` - (String) \n  * `:type` - *required* - (String)
+  Valid values include:\n    * `rails`\n    * `php`\n    * `nodejs`\n    * `static`\n
+  \   * `other`\n  * `:app_source` - (Hash) \n    * `:type` - (String) Valid values
+  include:\n      * `git`\n      * `svn`\n      * `archive`\n      * `s3`\n    * `:url`
+  - (String) \n    * `:username` - (String) \n    * `:password` - (String) \n    *
+  `:ssh_key` - (String) \n    * `:revision` - (String) \n  * `:domains` - (Array&lt;<String>)
+  \n  * `:enable_ssl` - (Boolean) \n  * `:ssl_configuration` - (Hash) \n    * `:certificate`
+  - *required* - (String) \n    * `:private_key` - *required* - (String) \n    * `:chain`
+  - (String) \n  * `:attributes` - (Hash&lt;<String,String>) \n@return [Core::Response]
+  The `#data` method of the response object returns a hash with the following structure:\n\n
+  \ * `:app_id` - (String)"
+:create_deployment: "Calls the CreateDeployment API operation.\n@param [Hash] options\n
+  \ * `:stack_id` - *required* - (String) \n  * `:app_id` - (String) \n  * `:instance_ids`
+  - (Array&lt;<String>) \n  * `:command` - *required* - (Hash) \n    * `:name` - *required*
+  - (String) Valid values include:\n      * `install_dependencies`\n      * `update_dependencies`\n
+  \     * `update_custom_cookbooks`\n      * `execute_recipes`\n      * `deploy`\n
+  \     * `rollback`\n      * `start`\n      * `stop`\n      * `restart`\n      *
+  `undeploy`\n    * `:args` - (Hash&lt;<String,Array&lt;<String>>) \n  * `:comment`
+  - (String) \n  * `:custom_json` - (String) \n@return [Core::Response] The `#data`
+  method of the response object returns a hash with the following structure:\n\n  *
+  `:deployment_id` - (String)"
+:create_instance: "Calls the CreateInstance API operation.\n@param [Hash] options\n
+  \ * `:stack_id` - *required* - (String) \n  * `:layer_ids` - *required* - (Array&lt;<String>)
+  \n  * `:instance_type` - *required* - (String) \n  * `:auto_scaling_type` - (String)
+  Valid values include:\n    * `load`\n    * `timer`\n  * `:hostname` - (String) \n
+  \ * `:os` - (String) \n  * `:ami_id` - (String) \n  * `:ssh_key_name` - (String)
+  \n  * `:availability_zone` - (String) \n  * `:architecture` - (String) Valid values
+  include:\n    * `x86_64`\n    * `i386`\n  * `:root_device_type` - (String) Valid
+  values include:\n    * `ebs`\n    * `instance-store`\n  * `:install_updates_on_boot`
+  - (Boolean) \n@return [Core::Response] The `#data` method of the response object
+  returns a hash with the following structure:\n\n  * `:instance_id` - (String)"
+:create_layer: "Calls the CreateLayer API operation.\n@param [Hash] options\n  * `:stack_id`
+  - *required* - (String) \n  * `:type` - *required* - (String) Valid values include:\n
+  \   * `lb`\n    * `web`\n    * `php-app`\n    * `rails-app`\n    * `nodejs-app`\n
+  \   * `memcached`\n    * `db-master`\n    * `monitoring-master`\n    * `custom`\n
+  \ * `:name` - *required* - (String) \n  * `:shortname` - *required* - (String) \n
+  \ * `:attributes` - (Hash&lt;<String,String>) \n  * `:custom_instance_profile_arn`
+  - (String) \n  * `:custom_security_group_ids` - (Array&lt;<String>) \n  * `:packages`
+  - (Array&lt;<String>) \n  * `:volume_configurations` - (Array&lt;<Hash>) \n    *
+  `:mount_point` - *required* - (String) \n    * `:raid_level` - (Integer) \n    *
+  `:number_of_disks` - *required* - (Integer) \n    * `:size` - *required* - (Integer)
+  \n  * `:enable_auto_healing` - (Boolean) \n  * `:auto_assign_elastic_ips` - (Boolean)
+  \n  * `:custom_recipes` - (Hash) \n    * `:setup` - (Array&lt;<String>) \n    *
+  `:configure` - (Array&lt;<String>) \n    * `:deploy` - (Array&lt;<String>) \n    *
+  `:undeploy` - (Array&lt;<String>) \n    * `:shutdown` - (Array&lt;<String>) \n  *
+  `:install_updates_on_boot` - (Boolean) \n@return [Core::Response] The `#data` method
+  of the response object returns a hash with the following structure:\n\n  * `:layer_id`
+  - (String)"
+:create_stack: "Calls the CreateStack API operation.\n@param [Hash] options\n  * `:name`
+  - *required* - (String) \n  * `:region` - *required* - (String) \n  * `:attributes`
+  - (Hash&lt;<String,String>) \n  * `:service_role_arn` - *required* - (String) \n
+  \ * `:default_instance_profile_arn` - *required* - (String) \n  * `:default_os`
+  - (String) \n  * `:hostname_theme` - (String) \n  * `:default_availability_zone`
+  - (String) \n  * `:custom_json` - (String) \n  * `:configuration_manager` - (Hash)
+  \n    * `:name` - (String) \n    * `:version` - (String) \n  * `:use_custom_cookbooks`
+  - (Boolean) \n  * `:custom_cookbooks_source` - (Hash) \n    * `:type` - (String)
+  Valid values include:\n      * `git`\n      * `svn`\n      * `archive`\n      *
+  `s3`\n    * `:url` - (String) \n    * `:username` - (String) \n    * `:password`
+  - (String) \n    * `:ssh_key` - (String) \n    * `:revision` - (String) \n  * `:default_ssh_key_name`
+  - (String) \n  * `:default_root_device_type` - (String) Valid values include:\n
+  \   * `ebs`\n    * `instance-store`\n@return [Core::Response] The `#data` method
+  of the response object returns a hash with the following structure:\n\n  * `:stack_id`
+  - (String)"
+:create_user_profile: "Calls the CreateUserProfile API operation.\n@param [Hash] options\n
+  \ * `:iam_user_arn` - *required* - (String) \n  * `:ssh_username` - (String) \n
+  \ * `:ssh_public_key` - (String) \n@return [Core::Response] The `#data` method of
+  the response object returns a hash with the following structure:\n\n  * `:iam_user_arn`
+  - (String)"
+:delete_app: "Calls the DeleteApp API operation.\n@param [Hash] options\n  * `:app_id`
+  - *required* - (String) \n@return [Core::Response]"
+:delete_instance: "Calls the DeleteInstance API operation.\n@param [Hash] options\n
+  \ * `:instance_id` - *required* - (String) \n  * `:delete_elastic_ip` - (Boolean)
+  \n  * `:delete_volumes` - (Boolean) \n@return [Core::Response]"
+:delete_layer: "Calls the DeleteLayer API operation.\n@param [Hash] options\n  * `:layer_id`
+  - *required* - (String) \n@return [Core::Response]"
+:delete_stack: "Calls the DeleteStack API operation.\n@param [Hash] options\n  * `:stack_id`
+  - *required* - (String) \n@return [Core::Response]"
+:delete_user_profile: "Calls the DeleteUserProfile API operation.\n@param [Hash] options\n
+  \ * `:iam_user_arn` - *required* - (String) \n@return [Core::Response]"
+:describe_apps: "Calls the DescribeApps API operation.\n@param [Hash] options\n  *
+  `:stack_id` - (String) \n  * `:app_ids` - (Array&lt;<String>) \n@return [Core::Response]
+  The `#data` method of the response object returns a hash with the following structure:\n\n
+  \ * `:apps` - (Array<Hash>)\n    * `:app_id` - (String)\n    * `:stack_id` - (String)\n
+  \   * `:shortname` - (String)\n    * `:name` - (String)\n    * `:description` -
+  (String)\n    * `:type` - (String)\n    * `:app_source` - (Hash)\n      * `:type`
+  - (String)\n      * `:url` - (String)\n      * `:username` - (String)\n      * `:password`
+  - (String)\n      * `:ssh_key` - (String)\n      * `:revision` - (String)\n    *
+  `:domains` - (Array<String>)\n    * `:enable_ssl` - (Boolean)\n    * `:ssl_configuration`
+  - (Hash)\n      * `:certificate` - (String)\n      * `:private_key` - (String)\n
+  \     * `:chain` - (String)\n    * `:attributes` - (Hash<String,String>)\n    *
+  `:created_at` - (String)"
+:describe_commands: "Calls the DescribeCommands API operation.\n@param [Hash] options\n
+  \ * `:deployment_id` - (String) \n  * `:instance_id` - (String) \n  * `:command_ids`
+  - (Array&lt;<String>) \n@return [Core::Response] The `#data` method of the response
+  object returns a hash with the following structure:\n\n  * `:commands` - (Array<Hash>)\n
+  \   * `:command_id` - (String)\n    * `:instance_id` - (String)\n    * `:deployment_id`
+  - (String)\n    * `:created_at` - (String)\n    * `:acknowledged_at` - (String)\n
+  \   * `:completed_at` - (String)\n    * `:status` - (String)\n    * `:exit_code`
+  - (Integer)\n    * `:log_url` - (String)\n    * `:type` - (String)"
+:describe_deployments: "Calls the DescribeDeployments API operation.\n@param [Hash]
+  options\n  * `:stack_id` - (String) \n  * `:app_id` - (String) \n  * `:deployment_ids`
+  - (Array&lt;<String>) \n@return [Core::Response] The `#data` method of the response
+  object returns a hash with the following structure:\n\n  * `:deployments` - (Array<Hash>)\n
+  \   * `:deployment_id` - (String)\n    * `:stack_id` - (String)\n    * `:app_id`
+  - (String)\n    * `:created_at` - (String)\n    * `:completed_at` - (String)\n    *
+  `:duration` - (Integer)\n    * `:iam_user_arn` - (String)\n    * `:comment` - (String)\n
+  \   * `:command` - (Hash)\n      * `:name` - (String)\n      * `:args` - (Hash<String,Hash>)\n
+  \       * `:value` - (Array<String>)\n    * `:status` - (String)\n    * `:custom_json`
+  - (String)\n    * `:instance_ids` - (Array<String>)"
+:describe_elastic_ips: "Calls the DescribeElasticIps API operation.\n@param [Hash]
+  options\n  * `:instance_id` - (String) \n  * `:ips` - (Array&lt;<String>) \n@return
+  [Core::Response] The `#data` method of the response object returns a hash with the
+  following structure:\n\n  * `:elastic_ips` - (Array<Hash>)\n    * `:ip` - (String)\n
+  \   * `:name` - (String)\n    * `:domain` - (String)\n    * `:region` - (String)"
+:describe_elastic_load_balancers: "Calls the DescribeElasticLoadBalancers API operation.\n@param
+  [Hash] options\n  * `:stack_id` - (String) \n  * `:layer_ids` - (Array&lt;<String>)
+  \n@return [Core::Response] The `#data` method of the response object returns a hash
+  with the following structure:\n\n  * `:elastic_load_balancers` - (Array<Hash>)\n
+  \   * `:elastic_load_balancer_name` - (String)\n    * `:region` - (String)\n    *
+  `:dns_name` - (String)\n    * `:stack_id` - (String)\n    * `:layer_id` - (String)\n
+  \   * `:vpc_id` - (String)\n    * `:availability_zones` - (Array<String>)\n    *
+  `:ec_2_instance_ids` - (Array<String>)"
+:describe_instances: "Calls the DescribeInstances API operation.\n@param [Hash] options\n
+  \ * `:stack_id` - (String) \n  * `:layer_id` - (String) \n  * `:instance_ids` -
+  (Array&lt;<String>) \n@return [Core::Response] The `#data` method of the response
+  object returns a hash with the following structure:\n\n  * `:instances` - (Array<Hash>)\n
+  \   * `:instance_id` - (String)\n    * `:ec2_instance_id` - (String)\n    * `:hostname`
+  - (String)\n    * `:stack_id` - (String)\n    * `:layer_ids` - (Array<String>)\n
+  \   * `:security_group_ids` - (Array<String>)\n    * `:instance_type` - (String)\n
+  \   * `:instance_profile_arn` - (String)\n    * `:status` - (String)\n    * `:os`
+  - (String)\n    * `:ami_id` - (String)\n    * `:availability_zone` - (String)\n
+  \   * `:public_dns` - (String)\n    * `:private_dns` - (String)\n    * `:public_ip`
+  - (String)\n    * `:private_ip` - (String)\n    * `:elastic_ip` - (String)\n    *
+  `:auto_scaling_type` - (String)\n    * `:ssh_key_name` - (String)\n    * `:ssh_host_rsa_key_fingerprint`
+  - (String)\n    * `:ssh_host_dsa_key_fingerprint` - (String)\n    * `:created_at`
+  - (String)\n    * `:last_service_error_id` - (String)\n    * `:architecture` - (String)\n
+  \   * `:root_device_type` - (String)\n    * `:root_device_volume_id` - (String)\n
+  \   * `:install_updates_on_boot` - (Boolean)"
+:describe_layers: "Calls the DescribeLayers API operation.\n@param [Hash] options\n
+  \ * `:stack_id` - *required* - (String) \n  * `:layer_ids` - (Array&lt;<String>)
+  \n@return [Core::Response] The `#data` method of the response object returns a hash
+  with the following structure:\n\n  * `:layers` - (Array<Hash>)\n    * `:stack_id`
+  - (String)\n    * `:layer_id` - (String)\n    * `:type` - (String)\n    * `:name`
+  - (String)\n    * `:shortname` - (String)\n    * `:attributes` - (Hash<String,String>)\n
+  \   * `:custom_instance_profile_arn` - (String)\n    * `:custom_security_group_ids`
+  - (Array<String>)\n    * `:default_security_group_names` - (Array<String>)\n    *
+  `:packages` - (Array<String>)\n    * `:volume_configurations` - (Array<Hash>)\n
+  \     * `:mount_point` - (String)\n      * `:raid_level` - (Integer)\n      * `:number_of_disks`
+  - (Integer)\n      * `:size` - (Integer)\n    * `:enable_auto_healing` - (Boolean)\n
+  \   * `:auto_assign_elastic_ips` - (Boolean)\n    * `:default_recipes` - (Hash)\n
+  \     * `:setup` - (Array<String>)\n      * `:configure` - (Array<String>)\n      *
+  `:deploy` - (Array<String>)\n      * `:undeploy` - (Array<String>)\n      * `:shutdown`
+  - (Array<String>)\n    * `:custom_recipes` - (Hash)\n      * `:setup` - (Array<String>)\n
+  \     * `:configure` - (Array<String>)\n      * `:deploy` - (Array<String>)\n      *
+  `:undeploy` - (Array<String>)\n      * `:shutdown` - (Array<String>)\n    * `:created_at`
+  - (String)\n    * `:install_updates_on_boot` - (Boolean)"
+:describe_load_based_auto_scaling: "Calls the DescribeLoadBasedAutoScaling API operation.\n@param
+  [Hash] options\n  * `:layer_ids` - *required* - (Array&lt;<String>) \n@return [Core::Response]
+  The `#data` method of the response object returns a hash with the following structure:\n\n
+  \ * `:load_based_auto_scaling_configurations` - (Array<Hash>)\n    * `:layer_id`
+  - (String)\n    * `:enable` - (Boolean)\n    * `:up_scaling` - (Hash)\n      * `:instance_count`
+  - (Integer)\n      * `:thresholds_wait_time` - (Integer)\n      * `:ignore_metrics_time`
+  - (Integer)\n      * `:cpu_threshold` - (Numeric)\n      * `:memory_threshold` -
+  (Numeric)\n      * `:load_threshold` - (Numeric)\n    * `:down_scaling` - (Hash)\n
+  \     * `:instance_count` - (Integer)\n      * `:thresholds_wait_time` - (Integer)\n
+  \     * `:ignore_metrics_time` - (Integer)\n      * `:cpu_threshold` - (Numeric)\n
+  \     * `:memory_threshold` - (Numeric)\n      * `:load_threshold` - (Numeric)"
+:describe_permissions: "Calls the DescribePermissions API operation.\n@param [Hash]
+  options\n  * `:iam_user_arn` - *required* - (String) \n  * `:stack_id` - *required*
+  - (String) \n@return [Core::Response] The `#data` method of the response object
+  returns a hash with the following structure:\n\n  * `:permissions` - (Array<Hash>)\n
+  \   * `:stack_id` - (String)\n    * `:iam_user_arn` - (String)\n    * `:allow_ssh`
+  - (Boolean)\n    * `:allow_sudo` - (Boolean)"
+:describe_raid_arrays: "Calls the DescribeRaidArrays API operation.\n@param [Hash]
+  options\n  * `:instance_id` - (String) \n  * `:raid_array_ids` - (Array&lt;<String>)
+  \n@return [Core::Response] The `#data` method of the response object returns a hash
+  with the following structure:\n\n  * `:raid_arrays` - (Array<Hash>)\n    * `:raid_array_id`
+  - (String)\n    * `:instance_id` - (String)\n    * `:name` - (String)\n    * `:raid_level`
+  - (Integer)\n    * `:number_of_disks` - (Integer)\n    * `:size` - (Integer)\n    *
+  `:device` - (String)\n    * `:mount_point` - (String)\n    * `:availability_zone`
+  - (String)\n    * `:created_at` - (String)"
+:describe_service_errors: "Calls the DescribeServiceErrors API operation.\n@param
+  [Hash] options\n  * `:stack_id` - (String) \n  * `:instance_id` - (String) \n  *
+  `:service_error_ids` - (Array&lt;<String>) \n@return [Core::Response] The `#data`
+  method of the response object returns a hash with the following structure:\n\n  *
+  `:service_errors` - (Array<Hash>)\n    * `:service_error_id` - (String)\n    * `:stack_id`
+  - (String)\n    * `:instance_id` - (String)\n    * `:type` - (String)\n    * `:message`
+  - (String)\n    * `:created_at` - (String)"
+:describe_stacks: "Calls the DescribeStacks API operation.\n@param [Hash] options\n
+  \ * `:stack_ids` - (Array&lt;<String>) \n@return [Core::Response] The `#data` method
+  of the response object returns a hash with the following structure:\n\n  * `:stacks`
+  - (Array<Hash>)\n    * `:stack_id` - (String)\n    * `:name` - (String)\n    * `:region`
+  - (String)\n    * `:attributes` - (Hash<String,String>)\n    * `:service_role_arn`
+  - (String)\n    * `:default_instance_profile_arn` - (String)\n    * `:default_os`
+  - (String)\n    * `:hostname_theme` - (String)\n    * `:default_availability_zone`
+  - (String)\n    * `:custom_json` - (String)\n    * `:configuration_manager` - (Hash)\n
+  \     * `:name` - (String)\n      * `:version` - (String)\n    * `:use_custom_cookbooks`
+  - (Boolean)\n    * `:custom_cookbooks_source` - (Hash)\n      * `:type` - (String)\n
+  \     * `:url` - (String)\n      * `:username` - (String)\n      * `:password` -
+  (String)\n      * `:ssh_key` - (String)\n      * `:revision` - (String)\n    * `:default_ssh_key_name`
+  - (String)\n    * `:created_at` - (String)\n    * `:default_root_device_type` -
+  (String)"
+:describe_time_based_auto_scaling: "Calls the DescribeTimeBasedAutoScaling API operation.\n@param
+  [Hash] options\n  * `:instance_ids` - *required* - (Array&lt;<String>) \n@return
+  [Core::Response] The `#data` method of the response object returns a hash with the
+  following structure:\n\n  * `:time_based_auto_scaling_configurations` - (Array<Hash>)\n
+  \   * `:instance_id` - (String)\n    * `:auto_scaling_schedule` - (Hash)\n      *
+  `:monday` - (Hash<String,String>)\n      * `:tuesday` - (Hash<String,String>)\n
+  \     * `:wednesday` - (Hash<String,String>)\n      * `:thursday` - (Hash<String,String>)\n
+  \     * `:friday` - (Hash<String,String>)\n      * `:saturday` - (Hash<String,String>)\n
+  \     * `:sunday` - (Hash<String,String>)"
+:describe_user_profiles: "Calls the DescribeUserProfiles API operation.\n@param [Hash]
+  options\n  * `:iam_user_arns` - *required* - (Array&lt;<String>) \n@return [Core::Response]
+  The `#data` method of the response object returns a hash with the following structure:\n\n
+  \ * `:user_profiles` - (Array<Hash>)\n    * `:iam_user_arn` - (String)\n    * `:name`
+  - (String)\n    * `:ssh_username` - (String)\n    * `:ssh_public_key` - (String)"
+:describe_volumes: "Calls the DescribeVolumes API operation.\n@param [Hash] options\n
+  \ * `:instance_id` - (String) \n  * `:raid_array_id` - (String) \n  * `:volume_ids`
+  - (Array&lt;<String>) \n@return [Core::Response] The `#data` method of the response
+  object returns a hash with the following structure:\n\n  * `:volumes` - (Array<Hash>)\n
+  \   * `:volume_id` - (String)\n    * `:ec2_volume_id` - (String)\n    * `:name`
+  - (String)\n    * `:raid_array_id` - (String)\n    * `:instance_id` - (String)\n
+  \   * `:status` - (String)\n    * `:size` - (Integer)\n    * `:device` - (String)\n
+  \   * `:mount_point` - (String)\n    * `:region` - (String)\n    * `:availability_zone`
+  - (String)"
+:detach_elastic_load_balancer: "Calls the DetachElasticLoadBalancer API operation.\n@param
+  [Hash] options\n  * `:elastic_load_balancer_name` - *required* - (String) \n  *
+  `:layer_id` - *required* - (String) \n@return [Core::Response]"
+:get_hostname_suggestion: "Calls the GetHostnameSuggestion API operation.\n@param
+  [Hash] options\n  * `:layer_id` - *required* - (String) \n@return [Core::Response]
+  The `#data` method of the response object returns a hash with the following structure:\n\n
+  \ * `:layer_id` - (String)\n  * `:hostname` - (String)"
+:reboot_instance: "Calls the RebootInstance API operation.\n@param [Hash] options\n
+  \ * `:instance_id` - *required* - (String) \n@return [Core::Response]"
+:set_load_based_auto_scaling: "Calls the SetLoadBasedAutoScaling API operation.\n@param
+  [Hash] options\n  * `:layer_id` - *required* - (String) \n  * `:enable` - (Boolean)
+  \n  * `:up_scaling` - (Hash) \n    * `:instance_count` - (Integer) \n    * `:thresholds_wait_time`
+  - (Integer) \n    * `:ignore_metrics_time` - (Integer) \n    * `:cpu_threshold`
+  - (Float) \n    * `:memory_threshold` - (Float) \n    * `:load_threshold` - (Float)
+  \n  * `:down_scaling` - (Hash) \n    * `:instance_count` - (Integer) \n    * `:thresholds_wait_time`
+  - (Integer) \n    * `:ignore_metrics_time` - (Integer) \n    * `:cpu_threshold`
+  - (Float) \n    * `:memory_threshold` - (Float) \n    * `:load_threshold` - (Float)
+  \n@return [Core::Response]"
+:set_permission: "Calls the SetPermission API operation.\n@param [Hash] options\n
+  \ * `:stack_id` - *required* - (String) \n  * `:iam_user_arn` - *required* - (String)
+  \n  * `:allow_ssh` - (Boolean) \n  * `:allow_sudo` - (Boolean) \n@return [Core::Response]"
+:set_time_based_auto_scaling: "Calls the SetTimeBasedAutoScaling API operation.\n@param
+  [Hash] options\n  * `:instance_id` - *required* - (String) \n  * `:auto_scaling_schedule`
+  - (Hash) \n    * `:monday` - (Hash&lt;<String,String>) \n    * `:tuesday` - (Hash&lt;<String,String>)
+  \n    * `:wednesday` - (Hash&lt;<String,String>) \n    * `:thursday` - (Hash&lt;<String,String>)
+  \n    * `:friday` - (Hash&lt;<String,String>) \n    * `:saturday` - (Hash&lt;<String,String>)
+  \n    * `:sunday` - (Hash&lt;<String,String>) \n@return [Core::Response]"
+:start_instance: "Calls the StartInstance API operation.\n@param [Hash] options\n
+  \ * `:instance_id` - *required* - (String) \n@return [Core::Response]"
+:start_stack: "Calls the StartStack API operation.\n@param [Hash] options\n  * `:stack_id`
+  - *required* - (String) \n@return [Core::Response]"
+:stop_instance: "Calls the StopInstance API operation.\n@param [Hash] options\n  *
+  `:instance_id` - *required* - (String) \n@return [Core::Response]"
+:stop_stack: "Calls the StopStack API operation.\n@param [Hash] options\n  * `:stack_id`
+  - *required* - (String) \n@return [Core::Response]"
+:update_app: "Calls the UpdateApp API operation.\n@param [Hash] options\n  * `:app_id`
+  - *required* - (String) \n  * `:name` - (String) \n  * `:description` - (String)
+  \n  * `:type` - (String) Valid values include:\n    * `rails`\n    * `php`\n    *
+  `nodejs`\n    * `static`\n    * `other`\n  * `:app_source` - (Hash) \n    * `:type`
+  - (String) Valid values include:\n      * `git`\n      * `svn`\n      * `archive`\n
+  \     * `s3`\n    * `:url` - (String) \n    * `:username` - (String) \n    * `:password`
+  - (String) \n    * `:ssh_key` - (String) \n    * `:revision` - (String) \n  * `:domains`
+  - (Array&lt;<String>) \n  * `:enable_ssl` - (Boolean) \n  * `:ssl_configuration`
+  - (Hash) \n    * `:certificate` - *required* - (String) \n    * `:private_key` -
+  *required* - (String) \n    * `:chain` - (String) \n  * `:attributes` - (Hash&lt;<String,String>)
+  \n@return [Core::Response]"
+:update_instance: "Calls the UpdateInstance API operation.\n@param [Hash] options\n
+  \ * `:instance_id` - *required* - (String) \n  * `:layer_ids` - (Array&lt;<String>)
+  \n  * `:instance_type` - (String) \n  * `:auto_scaling_type` - (String) Valid values
+  include:\n    * `load`\n    * `timer`\n  * `:hostname` - (String) \n  * `:os` -
+  (String) \n  * `:ami_id` - (String) \n  * `:ssh_key_name` - (String) \n  * `:architecture`
+  - (String) Valid values include:\n    * `x86_64`\n    * `i386`\n  * `:install_updates_on_boot`
+  - (Boolean) \n@return [Core::Response]"
+:update_layer: "Calls the UpdateLayer API operation.\n@param [Hash] options\n  * `:layer_id`
+  - *required* - (String) \n  * `:name` - (String) \n  * `:shortname` - (String) \n
+  \ * `:attributes` - (Hash&lt;<String,String>) \n  * `:custom_instance_profile_arn`
+  - (String) \n  * `:custom_security_group_ids` - (Array&lt;<String>) \n  * `:packages`
+  - (Array&lt;<String>) \n  * `:volume_configurations` - (Array&lt;<Hash>) \n    *
+  `:mount_point` - *required* - (String) \n    * `:raid_level` - (Integer) \n    *
+  `:number_of_disks` - *required* - (Integer) \n    * `:size` - *required* - (Integer)
+  \n  * `:enable_auto_healing` - (Boolean) \n  * `:auto_assign_elastic_ips` - (Boolean)
+  \n  * `:custom_recipes` - (Hash) \n    * `:setup` - (Array&lt;<String>) \n    *
+  `:configure` - (Array&lt;<String>) \n    * `:deploy` - (Array&lt;<String>) \n    *
+  `:undeploy` - (Array&lt;<String>) \n    * `:shutdown` - (Array&lt;<String>) \n  *
+  `:install_updates_on_boot` - (Boolean) \n@return [Core::Response]"
+:update_stack: "Calls the UpdateStack API operation.\n@param [Hash] options\n  * `:stack_id`
+  - *required* - (String) \n  * `:name` - (String) \n  * `:attributes` - (Hash&lt;<String,String>)
+  \n  * `:service_role_arn` - (String) \n  * `:default_instance_profile_arn` - (String)
+  \n  * `:default_os` - (String) \n  * `:hostname_theme` - (String) \n  * `:default_availability_zone`
+  - (String) \n  * `:custom_json` - (String) \n  * `:configuration_manager` - (Hash)
+  \n    * `:name` - (String) \n    * `:version` - (String) \n  * `:use_custom_cookbooks`
+  - (Boolean) \n  * `:custom_cookbooks_source` - (Hash) \n    * `:type` - (String)
+  Valid values include:\n      * `git`\n      * `svn`\n      * `archive`\n      *
+  `s3`\n    * `:url` - (String) \n    * `:username` - (String) \n    * `:password`
+  - (String) \n    * `:ssh_key` - (String) \n    * `:revision` - (String) \n  * `:default_ssh_key_name`
+  - (String) \n  * `:default_root_device_type` - (String) Valid values include:\n
+  \   * `ebs`\n    * `instance-store`\n@return [Core::Response]"
+:update_user_profile: "Calls the UpdateUserProfile API operation.\n@param [Hash] options\n
+  \ * `:iam_user_arn` - *required* - (String) \n  * `:ssh_username` - (String) \n
+  \ * `:ssh_public_key` - (String) \n@return [Core::Response]"

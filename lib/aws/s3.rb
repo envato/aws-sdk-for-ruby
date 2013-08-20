@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,113 +18,134 @@ module AWS
 
   # Provides an expressive, object-oriented interface to Amazon S3.
   #
-  # To use Amazon S3 you must first 
-  # {sign up here}[http://aws.amazon.com/s3/].
+  # To use Amazon S3 you must first
+  # [sign up here](http://aws.amazon.com/s3/).
   #
   # For more information about Amazon S3, see:
   #
-  # * {Amazon S3}[http://aws.amazon.com/s3/]
-  # * {Amazon S3 Documentation}[http://aws.amazon.com/documentation/s3/]
+  # * [Amazon S3](http://aws.amazon.com/s3/)
+  # * [Amazon S3 Documentation](http://aws.amazon.com/documentation/s3/)
   #
-  # == Credentials
+  # # Credentials
   #
-  # You can setup default credentials for all AWS services via 
+  # You can setup default credentials for all AWS services via
   # AWS.config:
   #
-  #   AWS.config(
-  #     :access_key_id => 'YOUR_ACCESS_KEY_ID',
-  #     :secret_access_key => 'YOUR_SECRET_ACCESS_KEY')
-  # 
+  #     AWS.config(
+  #       :access_key_id => 'YOUR_ACCESS_KEY_ID',
+  #       :secret_access_key => 'YOUR_SECRET_ACCESS_KEY')
+  #
   # Or you can set them directly on the S3 interface:
   #
-  #   s3 = AWS::S3.new(
-  #     :access_key_id => 'YOUR_ACCESS_KEY_ID',
-  #     :secret_access_key => 'YOUR_SECRET_ACCESS_KEY')
+  #     s3 = AWS::S3.new(
+  #       :access_key_id => 'YOUR_ACCESS_KEY_ID',
+  #       :secret_access_key => 'YOUR_SECRET_ACCESS_KEY')
   #
-  # == Buckets Keys and Objects
+  # # Buckets
   #
-  # S3 stores objects in buckets.
+  # Before you can upload files to S3, you need to create a bucket.
   #
-  # To create a bucket:
+  #     s3 = AWS::S3.new
+  #     bucket = s3.buckets.create('my-bucket')
   #
-  #   bucket = s3.buckets.create('mybucket')
+  # If a bucket already exists, you can get a reference to the bucket.
   #
-  # To get a bucket:
+  #     bucket = s3.buckets['my-bucket'] # no request made
   #
-  #   bucket = s3.buckets[:mybucket]
-  #   bucket = s3.buckets['mybucket']
+  # You can also enumerate all buckets in your account.
   #
-  # Listing buckets:
-  # 
-  #   s3.buckets.each do |bucket|
-  #     puts bucket.name
-  #   end
+  #     s3.buckets.each do |bucket|
+  #       puts bucket.name
+  #     end
   #
-  # See {Bucket} and {BucketCollection} for more information on working
-  # with S3 buckets.
+  # See {BucketCollection} and {Bucket} for more information on working
+  # with buckets.
   #
-  # == Listing Objects
+  # # Objects
   #
-  # Enumerating objects in a bucket:
+  # Buckets contain objects.  Each object in a bucket has a unique key.
   #
-  #   bucket.objects.each do |object|
-  #     puts object.key #=> no data is fetched from s3, just a list of keys
-  #   end
+  # ## Getting an Object
   #
-  # You can limit the list of objects with a prefix, or explore the objects
-  # in a bucket as a tree.  See {ObjectCollection} for more information.
+  # If the object already exists, you can get a reference to the object.
   #
-  # == Reading and Writing to S3
+  #     # makes no request, returns an AWS::S3::S3Object
+  #     obj = bucket.objects['key']
   #
-  # Each object in a bucket has a unique key.
+  # ## Reading and Writing an Object
   #
-  #   photo = s3.buckets['mybucket'].objects['photo.jpg']
+  # The example above returns an {S3Object}.  You call {S3Object#write} and
+  # {S3Object#read} to upload to and download from S3 respectively.
   #
-  # Writing to an S3Object:
+  #     # streaming upload a file to S3
+  #     obj.write(Pathname.new('/path/to/file.txt'))
   #
-  #   photo.write(File.read('/some/photo.jpg'))
+  #     # streaming download from S3 to a file on disk
+  #     File.open('file.txt', 'wb') do |file|
+  #       obj.read do |chunk|
+  #          file.write(chunk)
+  #       end
+  #     end
   #
-  # Reading from an S3Object:
+  # ## Enumerating Objects
   #
-  #   File.open("/some/path/on/disk.jpg", "w") do |f|
-  #     f.write(photo.read)
-  #   end
+  # You can enumerate objects in your buckets.
   #
-  # See {S3Object} for more information on reading and writing to S3.
+  #     # enumerate ALL objects in the bucket (even if the bucket contains
+  #     # more than 1k objects)
+  #     bucket.objects.each do |obj|
+  #       puts obj.key
+  #     end
+  #
+  #     # enumerate at most 20 objects with the given prefix
+  #     bucket.objects.with_prefix('photos/').each(:limit => 20) do |photo|
+  #       puts photo.key
+  #     end
+  #
+  # See {ObjectCollection} and {S3Object} for more information on working
+  # with objects.
   #
   class S3
 
-    AWS.register_autoloads(self) do
-      autoload :AccessControlList,            'access_control_list'
-      autoload :ACLObject,                    'acl_object'
-      autoload :Bucket,                       'bucket'
-      autoload :BucketCollection,             'bucket_collection'
-      autoload :BucketVersionCollection,      'bucket_version_collection'
-      autoload :Client,                       'client'
-      autoload :DataOptions,                  'data_options'
-      autoload :Errors,                       'errors'
-      autoload :MultipartUpload,              'multipart_upload'
-      autoload :MultipartUploadCollection,    'multipart_upload_collection'
-      autoload :ObjectCollection,             'object_collection'
-      autoload :ObjectMetadata,               'object_metadata'
-      autoload :ObjectUploadCollection,       'object_upload_collection'
-      autoload :ObjectVersion,                'object_version'
-      autoload :ObjectVersionCollection,      'object_version_collection'
-      autoload :PaginatedCollection,          'paginated_collection'
-      autoload :Policy,                       'policy'
-      autoload :PrefixAndDelimiterCollection, 'prefix_and_delimiter_collection'
-      autoload :PrefixedCollection,           'prefixed_collection'
-      autoload :PresignedPost,                'presigned_post'
-      autoload :Request,                      'request'
-      autoload :S3Object,                     's3_object'
-      autoload :Tree,                         'tree'
-      autoload :UploadedPart,                 'uploaded_part'
-      autoload :UploadedPartCollection,       'uploaded_part_collection'
-    end
+    autoload :AccessControlList, 'aws/s3/access_control_list'
+    autoload :ACLObject, 'aws/s3/acl_object'
+    autoload :ACLOptions, 'aws/s3/acl_options'
+    autoload :Bucket, 'aws/s3/bucket'
+    autoload :BucketCollection, 'aws/s3/bucket_collection'
+    autoload :BucketTagCollection, 'aws/s3/bucket_tag_collection'
+    autoload :BucketLifecycleConfiguration, 'aws/s3/bucket_lifecycle_configuration'
+    autoload :BucketVersionCollection, 'aws/s3/bucket_version_collection'
+    autoload :Client, 'aws/s3/client'
+    autoload :CORSRule, 'aws/s3/cors_rule'
+    autoload :CORSRuleCollection, 'aws/s3/cors_rule_collection'
+    autoload :DataOptions, 'aws/s3/data_options'
+    autoload :EncryptionUtils, 'aws/s3/encryption_utils'
+    autoload :CipherIO, 'aws/s3/cipher_io'
+    autoload :Errors, 'aws/s3/errors'
+    autoload :MultipartUpload, 'aws/s3/multipart_upload'
+    autoload :MultipartUploadCollection, 'aws/s3/multipart_upload_collection'
+    autoload :ObjectCollection, 'aws/s3/object_collection'
+    autoload :ObjectMetadata, 'aws/s3/object_metadata'
+    autoload :ObjectUploadCollection, 'aws/s3/object_upload_collection'
+    autoload :ObjectVersion, 'aws/s3/object_version'
+    autoload :ObjectVersionCollection, 'aws/s3/object_version_collection'
+    autoload :PaginatedCollection, 'aws/s3/paginated_collection'
+    autoload :Policy, 'aws/s3/policy'
+    autoload :PrefixAndDelimiterCollection, 'aws/s3/prefix_and_delimiter_collection'
+    autoload :PrefixedCollection, 'aws/s3/prefixed_collection'
+    autoload :PresignedPost, 'aws/s3/presigned_post'
+    autoload :Request, 'aws/s3/request'
+    autoload :S3Object, 'aws/s3/s3_object'
+    autoload :Tree, 'aws/s3/tree'
+    autoload :UploadedPart, 'aws/s3/uploaded_part'
+    autoload :UploadedPartCollection, 'aws/s3/uploaded_part_collection'
+    autoload :WebsiteConfiguration, 'aws/s3/website_configuration'
 
     include Core::ServiceInterface
 
-    # @return [BucketCollection] Returns a collection that represents all 
+    endpoint_prefix 's3'
+
+    # @return [BucketCollection] Returns a collection that represents all
     #  buckets in the account.
     def buckets
       BucketCollection.new(:config => @config)

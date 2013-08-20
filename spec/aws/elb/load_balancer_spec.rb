@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,6 +27,14 @@ module AWS
         let(:identifiers)          { %w(name) }
         let(:constructor_args)     { identifiers }
         let(:comparison_instances) { [described_class.new("name2")] }
+      end
+
+      let(:response) { client.stub_for(:describe_load_balancers) }
+
+      let(:description) {{ :load_balancer_name => load_balancer.name }}
+
+      before(:each) do
+        response.data[:load_balancer_descriptions] = [description]
       end
 
       context '#initialize' do
@@ -104,7 +112,7 @@ module AWS
       end
 
       context '#delete' do
-        
+
         it 'calls #delete_load_balancer on the client' do
           client.should_receive(:delete_load_balancer).
             with(:load_balancer_name => load_balancer.name)
@@ -120,18 +128,19 @@ module AWS
         let(:now) { Time.now }
 
         before(:each) do
-          response.stub(:load_balancer_descriptions).and_return([
-            double('load-balancer', {
+          response.data[:load_balancer_descriptions] = [
+            {
               :load_balancer_name => 'lb-name',
               :canonical_hosted_zone_name => 'hosted-zone-name',
               :canonical_hosted_zone_name_id => 'hosted-zone-name-id',
               :created_time => now,
               :dns_name => 'dns-name',
-              :source_security_group => double('ssg',
+              :source_security_group => {
                 :group_name => 'sg-name',
-                :owner_alias => 'sg-owner-alias'),
-            })
-          ])
+                :owner_alias => 'sg-owner-alias',
+              },
+            },
+          ]
         end
 
         it 'returns the load balancer name as a string' do
@@ -143,7 +152,7 @@ module AWS
         end
 
         it 'returns the canonical hosted zone name id as a string' do
-          load_balancer.canonical_hosted_zone_name_id.should == 
+          load_balancer.canonical_hosted_zone_name_id.should ==
             'hosted-zone-name-id'
         end
 
@@ -166,7 +175,7 @@ module AWS
       context '#availability_zones' do
 
         it 'returns an az collection' do
-          load_balancer.availability_zones.should 
+          load_balancer.availability_zones.should
             be_an(AvailabilityZoneCollection)
         end
 
@@ -180,16 +189,50 @@ module AWS
 
       end
 
+      context '#security_groups' do
+
+        it 'returns an array of security groups' do
+          description[:security_groups] = %w(id1 id2)
+          load_balancer.security_groups.should eq([
+            EC2::SecurityGroup.new('id1', :config => config),
+            EC2::SecurityGroup.new('id2', :config => config),
+          ])
+        end
+
+      end
+
+      context '#subnets' do
+
+        it 'returns an array of subnets groups' do
+          description[:subnets] = %w(id1 id2)
+          load_balancer.subnets.should eq([
+            EC2::Subnet.new('id1', :config => config),
+            EC2::Subnet.new('id2', :config => config),
+          ])
+        end
+
+      end
+
+      context '#scheme' do
+
+       it 'returns the scheme' do
+        description[:scheme] = 'scheme-value'
+        load_balancer.scheme.should eq('scheme-value')
+       end
+
+      end
+
       context '#availability_zone_names' do
 
         let(:response) { client.stub_for(:describe_load_balancers) }
 
         before(:each) do
-          response.stub(:load_balancer_descriptions).and_return([
-            double('load-balancer', 
+          response.data[:load_balancer_descriptions] = [
+            {
               :load_balancer_name => load_balancer.name,
-              :availability_zones => %w(az1 az2 az3))
-          ])
+              :availability_zones => %w(az1 az2 az3),
+            },
+          ]
         end
 
         it 'returns an array of strings' do
@@ -204,21 +247,20 @@ module AWS
 
         before(:each) do
 
-          source_sg = double('load-balancer-source-sg',
+          source_sg = {
             :group_name => 'lb-group-name',
-            :owner_alias => 'lb-owner-alias')
+            :owner_alias => 'lb-owner-alias' }
 
-          balancer = double('load-balancer', 
+          balancer = {
             :load_balancer_name => load_balancer.name,
-            :source_security_group => source_sg)
-            
-          response.stub(:load_balancer_descriptions).
-            and_return([balancer])
+            :source_security_group => source_sg }
+
+          response.data[:load_balancer_descriptions] = [balancer]
 
         end
 
         it 'returns a hash for the group name and owner alias' do
-          load_balancer.source_security_group.should == 
+          load_balancer.source_security_group.should ==
             { :group_name => 'lb-group-name', :user_id => 'lb-owner-alias' }
         end
 
@@ -228,33 +270,29 @@ module AWS
 
         let(:response) { client.stub_for(:describe_load_balancers) }
 
-        let(:config_a) {
-          double('health-check',
-            :healthy_threshold => 1,
-            :unhealthy_threshold => 2,
-            :interval => 3,
-            :timeout => 4,
-            :target => 'TCP:80')
-        }
+        let(:config_a) {{
+          :healthy_threshold => 1,
+          :unhealthy_threshold => 2,
+          :interval => 3,
+          :timeout => 4,
+          :target => 'TCP:80',
+        }}
 
-        let(:config_b) {
-          double('health-check',
-            :healthy_threshold => 2,
-            :unhealthy_threshold => 3,
-            :interval => 4,
-            :timeout => 5,
-            :target => 'HTTP:443')
-        }
+        let(:config_b) {{
+          :healthy_threshold => 2,
+          :unhealthy_threshold => 3,
+          :interval => 4,
+          :timeout => 5,
+          :target => 'HTTP:443',
+        }}
 
-        let(:balancer_description) {
-          double('load-balancer-description',
-            :load_balancer_name => load_balancer.name,
-            :health_check => config_a)
-        }
-        
+        let(:balancer_description) {{
+          :load_balancer_name => load_balancer.name,
+          :health_check => config_a,
+        }}
+
         before(:each) do
-          response.stub(:load_balancer_descriptions).
-            and_return([balancer_description])
+          response.data[:load_balancer_descriptions] = [balancer_description]
         end
 
         context '#health_check_configuration' do

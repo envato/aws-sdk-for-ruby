@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,13 +23,13 @@ Feature: Basic Volume Operations
     When I create a volume with the following parameters:
     | parameter         | value      |
     | size              | 1          |
-    | availability_zone | us-east-1a |
+    | availability_zone | us-east-1b |
     Then the result should be a volume
     And a request should have been made like:
     | TYPE  | NAME             | VALUE        |
     | param | Action           | CreateVolume |
     | param | Size             | 1            |
-    | param | AvailabilityZone | us-east-1a   |
+    | param | AvailabilityZone | us-east-1b   |
 
   @memoized
   Scenario: Attributes memoized from CreateVolume
@@ -52,7 +52,7 @@ Feature: Basic Volume Operations
     And a request should have been made like:
     | TYPE        | NAME             | VALUE        |
     | param       | Action           | CreateVolume |
-    | param       | AvailabilityZone | us-east-1a   |
+    | param       | AvailabilityZone | us-east-1b   |
     | param_match | SnapshotId       | snap-.+      |
 
   Scenario: List volumes

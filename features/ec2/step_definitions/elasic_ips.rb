@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,11 @@
 
 When /^I allocate an elastic ip$/ do
   @elastic_ip = @ec2.elastic_ips.allocate
+  @allocated_elastic_ips << @elastic_ip
+end
+
+When /^I allocate a VPC elastic ip$/ do
+  @elastic_ip = @ec2.elastic_ips.allocate :vpc => true
   @allocated_elastic_ips << @elastic_ip
 end
 
@@ -52,3 +57,26 @@ end
 When /^I count the elastic IPs in my account$/ do
   @ec2.elastic_ips.inject(0) { |count, ip| count + 1 }
 end
+
+Then /^the instance public ip address should match the elastic ip address$/ do
+  @instance.ip_address.should == @elastic_ip.ip_address
+end
+
+When /^I disassociate the elastic ip address$/ do
+  @elastic_ip.disassociate
+end
+
+Then /^the elastic ip should not exist$/ do
+  eventually do
+    @elastic_ip.exists?.should == false
+  end
+end
+
+When /^I associate the network interface to the elastic ip$/ do
+  @elastic_ip.associate :network_interface => @network_interface
+end
+
+Then /^the elastic ip should be assigned to the network interface$/ do
+  @elastic_ip.network_interface.should == @network_interface
+end
+

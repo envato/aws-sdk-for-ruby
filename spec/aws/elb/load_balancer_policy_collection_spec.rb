@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,19 +29,21 @@ module AWS
       context '#create' do
 
         it 'calls #create_load_balancer_policy' do
-          
-          client.should_receive(:create_load_balancer_policy).with(
-            :load_balancer_name => load_balancer.name,
-            :policy_name => 'policy-name',
-            :policy_type_name => 'policy-type-name',
-            :policy_attributes => [
+
+          client.should_receive(:create_load_balancer_policy).with do |opts|
+            opts[:load_balancer_name].should ==  load_balancer.name
+            opts[:policy_name].should == 'policy-name'
+            opts[:policy_type_name].should ==  'policy-type-name'
+            opts[:policy_attributes].sort_by do |a|
+              a[:attribute_name] + a[:attribute_value]
+            end.should == [
               { :attribute_name => 'attr1', :attribute_value => 'value1' },
               { :attribute_name => 'attr2', :attribute_value => 'value2' },
               { :attribute_name => 'attr2', :attribute_value => 'value3' },
               { :attribute_name => 'attr3', :attribute_value => 'true' },
               { :attribute_name => 'attr4', :attribute_value => 'false' },
             ]
-          )
+          end
 
           policies.create('policy-name', 'policy-type-name', {
             'attr1' => 'value1',
@@ -87,16 +89,17 @@ module AWS
         let(:response) { client.stub_for(:describe_load_balancer_policies) }
 
         before(:each) do
-          response.stub(:policy_descriptions).and_return([
-            double('policy-desc-1', 
+          response.data[:policy_descriptions] = [
+            {
               :policy_name => 'abc-policy',
               :policy_type_name => 'AbcPolicyType',
-              :policy_attribute_descriptions => []),
-            double('policy-desc-2', 
+              :policy_attribute_descriptions => [],
+            }, {
               :policy_name => 'xyz-policy',
               :policy_type_name => 'XyzPolicyType',
-              :policy_attribute_descriptions => []),
-          ])
+              :policy_attribute_descriptions => [],
+            },
+          ]
           client.stub(:describe_load_balancer_policies).and_return(response)
         end
 
@@ -118,7 +121,7 @@ module AWS
           ).and_return(response)
 
           policies.each(:policy_type_names => ['abc-policy', 'xyz-policy']) {|p|}
-          
+
         end
 
         it 'yield load balancer policies' do

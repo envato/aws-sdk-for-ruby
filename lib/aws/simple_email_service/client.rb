@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,22 +14,21 @@
 module AWS
   class SimpleEmailService
 
-    # @private
-    class Client < Core::Client
-
-      AWS.register_autoloads(self, 'aws/simple_email_service/client') do
-        autoload :XML,     'xml'
-      end
-
-      include Core::ConfiguredClientMethods
+    # Client class for Amazon Simple E-mail Service (SES).
+    class Client < Core::QueryClient
 
       API_VERSION = '2010-12-01'
 
       REGION_US_E1 = 'email.us-east-1.amazonaws.com'
 
-      REQUEST_CLASS = SimpleEmailService::Request
+      # @api private
+      CACHEABLE_REQUESTS = Set[]
 
-      configure_client
+    end
+
+    class Client::V20101201 < Client
+
+      define_client_methods('2010-12-01')
 
     end
   end

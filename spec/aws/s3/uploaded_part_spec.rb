@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -84,7 +84,7 @@ module AWS
 
       shared_examples_for "s3 uploaded part attribute accessor" do
 
-        let(:resp) { client.new_stub_for(:list_parts) }
+        let(:resp) { client.stub_for(:list_parts) }
 
         let(:response_part) { double("part",
                                      :part_number => 3) }

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -154,18 +154,22 @@ Feature: Instance attributes
 
   @get @vpc
   Scenario: Check if Source/Destination checking is enabled
-    Given I request to run an instance with the following parameters:
-    | parameter               | value        |
-    | image_id                | ami-8c1fece5 |
+    Given I create a vpc
+    And I create a subnet
+    When I request to run an vpc instance with the following parameters:
+    | parameter | value        |
+    | image_id  | ami-8c1fece5 |
     And I wait for the instance to exist
     When I ask if source/destination checking is enabled
     Then the result should be true
 
   @set @vpc
   Scenario: Disable Source/Destination checking
-    Given I request to run an instance with the following parameters:
-    | parameter               | value        |
-    | image_id                | ami-8c1fece5 |
+    Given I create a vpc
+    And I create a subnet
+    When I request to run an vpc instance with the following parameters:
+    | parameter | value        |
+    | image_id  | ami-8c1fece5 |
     And I wait for the instance to exist
     When I disable source/destination checking
     Then the instance should eventually have source/destination checking disabled
@@ -302,10 +306,10 @@ Feature: Instance attributes
     Given I request to run an instance with the following parameters:
     | parameter         | value        |
     | image_id          | ami-8c1fece5 |
-    | availability_zone | us-east-1d   |
+    | availability_zone | us-east-1b   |
     And I wait for the instance to exist
     When I get the instance's availability zone
-    Then the result should be "us-east-1d"
+    Then the result should be "us-east-1b"
 
   @get @slow
   Scenario: Check monitoring status

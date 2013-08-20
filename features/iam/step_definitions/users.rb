@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -105,6 +105,7 @@ When /^I create a new SES interface object with the new access keys$/ do
 end
 
 Then /^an error should be raised if I try to verify an email address$/ do
+  sleep(2) # for eventual consistancy
   lambda {
     @ses.email_addresses.verify('foo@bar.com')
   }.should raise_error(/is not authorized to perform: ses:VerifyEmailAddress/)

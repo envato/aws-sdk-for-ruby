@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,31 +27,31 @@ module AWS
 
       let(:desc_response) { client.stub_for(:describe_load_balancers) }
 
-      let(:description) {
-        double('lb-listener',
-          :listener => double('listener-desc', {
-            :load_balancer_port => 80,
-            :protocol => 'TCP',
-            :instance_port => 81,
-            :instance_protocol => 'HTTP',
-            :ssl_certificate_id => 'server-cert-arn',
-        }))
-      }
+      let(:description) {{
+        :listener => {
+          :load_balancer_port => 80,
+          :protocol => 'TCP',
+          :instance_port => 81,
+          :instance_protocol => 'HTTP',
+          :ssl_certificate_id => 'server-cert-arn',
+        }
+      }}
 
       before(:each) do
 
         listeners = [description]
 
-        lb = double('lb-description')
-        lb.stub(:load_balancer_name).and_return(load_balancer.name)
-        lb.stub(:listener_descriptions).and_return(listeners)
+        lb = {
+          :load_balancer_name => load_balancer.name,
+          :listener_descriptions => listeners,
+        }
 
-        desc_response.stub(:load_balancer_descriptions).and_return([lb])
+        desc_response.data[:load_balancer_descriptions] = [lb]
 
       end
 
       context '#load_balancer' do
-        
+
         it 'returns the load balancer' do
           listener.load_balancer.should == load_balancer
         end
@@ -71,7 +71,7 @@ module AWS
         it 'stringifies the port' do
           Listener.new(load_balancer, '443').port.should == 443
         end
-        
+
       end
 
       context '#protocol' do
@@ -134,16 +134,17 @@ module AWS
 
           response = client.stub_for(:describe_load_balancers)
 
-          response.stub(:load_balancer_descriptions).and_return([
-            double('lb-desc', 
+          response.data[:load_balancer_descriptions] = [
+            {
               :load_balancer_name => load_balancer.name,
               :listener_descriptions => [
-                double('listener-descriptions', 
-                  :listener => double('desc', :load_balancer_port => listener.port),
+                {
+                  :listener => { :load_balancer_port => listener.port },
                   :policy_names => ['policy-name-1']
-                )
-            ])
-          ])
+                }
+              ]
+            }
+          ]
 
           client.stub(:describe_load_balancers).and_return(response)
 
@@ -154,7 +155,7 @@ module AWS
       end
 
       context '#policy=' do
-        
+
         it 'accepts policy names' do
 
           client.should_receive(:set_load_balancer_policies_of_listener).with(
@@ -199,23 +200,24 @@ module AWS
 
           # no load balancers defined
           response = client.stub_for(:describe_load_balancers)
-          response.stub(:load_balancer_descriptions).and_return([])
+          response.data[:load_balancer_descriptions] = []
           client.stub(:describe_load_balancers).and_return(response)
-          
+
           listener.exists?.should == false
-          
+
         end
 
         it 'returns false if the load balancer policy does not exist' do
 
           response = client.stub_for(:describe_load_balancers)
-          response.stub(:load_balancer_descriptions).and_return([
-            double('lb-desc', 
+          response.data[:load_balancer_descriptions] = [
+            {
               :load_balancer_name => load_balancer.name,
-              :listener_descriptions => []) # no listener descriptions
-          ])
+              :listener_descriptions => [],
+            }
+          ]
           client.stub(:describe_load_balancers).and_return(response)
-          
+
           listener.exists?.should == false
 
         end
@@ -223,19 +225,17 @@ module AWS
         it 'returns true if the load balancer policy is described' do
 
           response = client.stub_for(:describe_load_balancers)
-          response.stub(:load_balancer_descriptions).and_return([
-            double('lb-desc', 
+          response.data[:load_balancer_descriptions] = [
+            {
               :load_balancer_name => load_balancer.name,
               :listener_descriptions => [
-                double('listener-descriptions', 
-                  :listener => double('listener', :load_balancer_port => listener.port)
-                )
+                { :listener => { :load_balancer_port => listener.port } },
               ]
-            )
-          ])
+            }
+          ]
 
           client.stub(:describe_load_balancers).and_return(response)
-          
+
           listener.exists?.should == true
 
         end
@@ -243,7 +243,7 @@ module AWS
       end
 
       context '#delete' do
-        
+
         it 'calls delete_load_balancer_listeners on the client' do
           client.should_receive(:delete_load_balancer_listeners).with(
             :load_balancer_name => load_balancer.name,

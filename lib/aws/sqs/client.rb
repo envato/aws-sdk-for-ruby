@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,21 +14,34 @@
 module AWS
   class SQS
 
-    # @private
-    class Client < Core::Client
+    # Client class for Amazon Simple Queue Service (SQS).
+    class Client < Core::QueryClient
 
-      AWS.register_autoloads(self) do
-        autoload :XML, 'xml'
+      API_VERSION = '2012-11-05'
+
+      # @api private
+      CACHEABLE_REQUESTS = Set[]
+
+      private
+
+      def build_request *args
+        request = super(*args)
+        if url_param = request.params.find { |p| p.name == "QueueUrl" }
+          url = URI.parse(url_param.value)
+          request.host = url.host
+          request.uri = url.request_uri
+          if matches = request.host.match(/^sqs\.(.+?)\./)
+            request.region = matches[1]
+          end
+        end
+        request
       end
 
-      include Core::ConfiguredClientMethods
+    end
 
-      API_VERSION = '2011-10-01'
+    class Client::V20121105 < Client
 
-      # @private
-      REQUEST_CLASS = SQS::Request
-
-      configure_client
+      define_client_methods('2012-11-05')
 
     end
   end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,31 +14,30 @@
 module AWS
   class STS
 
-    # @private
-    class Client < Core::Client
-
-      AWS.register_autoloads(self) do
-        autoload :XML, 'xml'
-      end
-
-      include Core::ConfiguredClientMethods
+    # Client class for AWS Security Token Service (STS).
+    class Client < Core::QueryClient
 
       API_VERSION = '2011-06-15'
 
       REGION_US_E1 = 'sts.amazonaws.com'
 
-      REQUEST_CLASS = STS::Request
-
-      configure_client
+      # @api private
+      CACHEABLE_REQUESTS = Set[]
 
       def initialize *args
         super
         unless config.use_ssl?
-          msg = 'AWS Security Token Service (STS) requires ssl but the ' + 
+          msg = 'AWS Security Token Service (STS) requires ssl but the ' +
             ':use_ssl option is set to false.  Try passing :use_ssl => true'
           raise ArgumentError, msg
         end
       end
+
+    end
+
+    class Client::V20110615 < Client
+
+      define_client_methods('2011-06-15')
 
     end
   end

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -121,6 +121,7 @@ Feature: Pre-signed HTML Form Fields
     | expires_header | Expires      | Thu    | Thu, 26 May |    204 |
     | expires_header | Expires      | Fri    | Thu, 26 May |    403 |
 
+  @wip @broken
   Scenario Outline: Pre-signed POST with expiration
     When I generate pre-signed form fields that expire in <expiration> seconds
     And I wait <sleep> seconds

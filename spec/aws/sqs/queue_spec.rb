@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,14 +22,20 @@ module AWS
 
       let(:client) { config.sqs_client }
 
+      let(:url) { "http://queue-url.sqs.us-east-1.amazonaws.com" }
+
       let(:queue) do
-        described_class.new("url", :config => config)
+        described_class.new(url, :config => config)
       end
 
-      it_should_behave_like "an SQS model object", "url", {}
+      let(:default_wait_time) do
+        described_class.const_get(:DEFAULT_WAIT_TIME_SECONDS)
+      end
+
+      it_should_behave_like "an SQS model object", 'http://url.com', {}
 
       it_should_behave_like "a resource object" do
-        let(:identifiers) { ["url"] }
+        let(:identifiers) { [url] }
         let(:constructor_args) { identifiers }
         let(:comparison_instances) { [described_class.new("url2")] }
       end
@@ -37,7 +43,7 @@ module AWS
       context '#initialize' do
 
         it 'should store the url' do
-          queue.url.should == "url"
+          queue.url.should == url
         end
 
       end
@@ -49,8 +55,7 @@ module AWS
         end
 
         it 'should call delete_queue' do
-          client.should_receive(:delete_queue).
-            with(:queue_url => "url")
+          client.should_receive(:delete_queue).with(:queue_url => url)
           queue.delete
         end
 
@@ -58,24 +63,24 @@ module AWS
 
       context '#send_message' do
 
-        let(:resp) { client.new_stub_for(:send_message) }
+        let(:resp) { client.stub_for(:send_message) }
 
         before(:each) do
-          resp.stub(:message_id).and_return("abc123")
-          resp.stub(:md5_of_message_body).and_return("123abc")
+          resp.data[:message_id] = 'abc123'
+          resp.data[:md5_of_message_body] = '123abc'
           client.stub(:send_message).and_return(resp)
         end
 
         it 'should call send_message on the client' do
           client.should_receive(:send_message).
-            with(:queue_url => "url",
+            with(:queue_url => url,
                  :message_body => "HELLO")
           queue.send_message("HELLO")
         end
 
         it 'passes along the delay option' do
           client.should_receive(:send_message).with(
-            :queue_url => "url",
+            :queue_url => url,
             :message_body => "HELLO",
             :delay_seconds => 400)
           queue.send_message('HELLO', :delay_seconds => 400)
@@ -95,22 +100,23 @@ module AWS
 
         let(:resp) { client.new_stub_for(:receive_message) }
 
-        let(:response_message) { double("message",
-                                        :message_id => "ID",
-                                        :md5_of_body => "MD5",
-                                        :body => "HELLO",
-                                        :receipt_handle => "HANDLE",
-                                        :attributes => attributes) }
+        let(:response_message) {{
+          :message_id => "ID",
+          :md5_of_body => "MD5",
+          :body => "HELLO",
+          :receipt_handle => "HANDLE",
+          :attributes => attributes,
+        }}
 
-        let(:attributes) do
-          { "SenderId" => "123456789012",
-            "SentTimestamp" => Time.now.to_i.to_s,
-            "ApproximateReceivedCount" => "12",
-            "ApproximateFirstReceiveTimestamp" => (Time.now + 12).to_i.to_s }
-        end
+        let(:attributes) {{
+          "SenderId" => "123456789012",
+          "SentTimestamp" => Time.now.to_i.to_s,
+          "ApproximateReceivedCount" => "12",
+          "ApproximateFirstReceiveTimestamp" => (Time.now + 12).to_i.to_s,
+        }}
 
         before(:each) do
-          resp.stub(:messages).and_return([response_message])
+          resp.data[:messages] = [response_message]
           client.stub(:receive_message).and_return(resp)
         end
 
@@ -118,14 +124,14 @@ module AWS
 
           it 'should call receive_message on the client' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url").
+              with(:queue_url => url).
               and_return(resp)
             queue.receive_message
           end
 
           it 'should pass :visibility_timeout' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url",
+              with(:queue_url => url,
                    :visibility_timeout => 12).
               and_return(resp)
             queue.receive_message(:visibility_timeout => 12)
@@ -133,17 +139,39 @@ module AWS
 
           it 'should pass :attributes as :attribute_names' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url",
+              with(:queue_url => url,
                    :attribute_names => ["foo", "bar"]).
               and_return(resp)
             queue.receive_message(:attributes => ["foo", "bar"])
+          end
+
+          it 'should not pass :wait_time_seconds if not set' do
+            client.should_receive(:receive_message).
+              with(:queue_url => url).
+              and_return(resp)
+            queue.receive_message
+          end
+
+          it 'should not pass :wait_time_seconds if nil' do
+            client.should_receive(:receive_message).
+              with(:queue_url => url).
+              and_return(resp)
+            queue.receive_message(:wait_time_seconds => nil)
+          end
+
+          it 'should pass :wait_time_seconds if set' do
+            client.should_receive(:receive_message).
+              with(:queue_url => url,
+                   :wait_time_seconds => 3).
+              and_return(resp)
+            queue.receive_message(:wait_time_seconds => 3)
           end
 
           context 'attribute names' do
 
             it 'should inflect symbol names' do
               client.should_receive(:receive_message).
-                with(:queue_url => "url",
+                with(:queue_url => url,
                      :attribute_names => ["FooBar"]).
               and_return(resp)
               queue.receive_message(:attributes => [:foo_bar])
@@ -151,7 +179,7 @@ module AWS
 
             it 'should interpret aliases' do
               client.should_receive(:receive_message).
-                with(:queue_url => "url",
+                with(:queue_url => url,
                      :attribute_names => ["SentTimestamp",
                                           "ApproximateReceiveCount",
                                           "ApproximateFirstReceiveTimestamp"]).
@@ -183,27 +211,28 @@ module AWS
 
           it 'should pass :limit as :max_number_of_messages' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url",
+              with(:queue_url => url,
                    :max_number_of_messages => 10).
               and_return(resp)
             queue.receive_message(:limit => 10)
           end
 
           it 'should return an array of message objects if :limit is passed' do
-            resp.stub(:messages).
-              and_return([double("message 1",
-                                 :message_id => "ID1",
-                                 :md5_of_body => "MD5",
-                                 :body => "HELLO",
-                                 :receipt_handle => "HANDLE",
-                                 :attributes => attributes),
-                          double("message 2",
-                                 :message_id => "ID2",
-                                 :md5_of_body => "MD5",
-                                 :body => "HELLO",
-                                 :receipt_handle => "HANDLE",
-                                 :attributes => attributes)])
-
+            resp.data[:messages] = [
+              {
+                :message_id => "ID1",
+                :md5_of_body => "MD5",
+                :body => "HELLO",
+                :receipt_handle => "HANDLE",
+                :attributes => attributes,
+              }, {
+                :message_id => "ID2",
+                :md5_of_body => "MD5",
+                :body => "HELLO",
+                :receipt_handle => "HANDLE",
+                :attributes => attributes,
+              }
+            ]
             messages = queue.receive_message(:limit => 10)
             messages.should be_an(Array)
             messages.each { |msg| msg.should be_a(ReceivedMessage) }
@@ -211,7 +240,7 @@ module AWS
           end
 
           it 'should return nil if no messages are returned' do
-            resp.stub(:messages).and_return([])
+            resp.data[:messages] = []
             queue.receive_message.should be_nil
           end
 
@@ -230,7 +259,7 @@ module AWS
             it 'should not call the block if no message is returned' do
               obj = double("object")
               obj.should_not_receive(:call)
-              resp.stub(:messages).and_return([])
+              resp.data[:messages] = []
               queue.receive_message do |msg|
                 obj.call(msg)
               end
@@ -242,17 +271,17 @@ module AWS
 
             it 'should automatically delete the message on normal exit' do
               client.should_receive(:receive_message).
-                with(:queue_url => "url").
+                with(:queue_url => url).
                 and_return(resp)
               client.should_receive(:delete_message).
-                with(:queue_url => "url",
+                with(:queue_url => url,
                      :receipt_handle => "HANDLE")
               queue.receive_message { |msg| }
             end
 
             it 'should not delete the message on an exceptional exit' do
               client.should_receive(:receive_message).
-                with(:queue_url => "url").
+                with(:queue_url => url).
                 and_return(resp)
               client.should_not_receive(:delete_message)
               lambda do
@@ -279,14 +308,16 @@ module AWS
 
           it 'should call receive_message on the client' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url").
+              with(:queue_url => url,
+                   :wait_time_seconds => default_wait_time).
               and_return(resp)
             receive_one
           end
 
           it 'should pass :visibility_timeout' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url",
+              with(:queue_url => url,
+                   :wait_time_seconds => default_wait_time,
                    :visibility_timeout => 12).
               and_return(resp)
             receive_one(:visibility_timeout => 12)
@@ -294,26 +325,44 @@ module AWS
 
           it 'should pass :batch_size as :max_number_of_messages' do
             client.should_receive(:receive_message).
-              with(:queue_url => "url",
+              with(:queue_url => url,
+                   :wait_time_seconds => default_wait_time,
                    :max_number_of_messages => 10).
               and_return(resp)
             receive_one(:batch_size => 10)
           end
 
+          it 'should default :wait_time_seconds to 15' do
+            client.should_receive(:receive_message).
+              with(:queue_url => url,
+                   :wait_time_seconds => default_wait_time).
+              and_return(resp)
+            receive_one
+          end
+
+          it 'should not pass :wait_time_seconds if set to nil' do
+            client.should_receive(:receive_message).
+              with(:queue_url => url).
+              and_return(resp)
+            receive_one(:wait_time_seconds => nil)
+          end
+
           it 'yields each message' do
-            resp.stub(:messages).
-              and_return([double("message 1",
-                                 :message_id => "ID1",
-                                 :md5_of_body => "MD5",
-                                 :body => "HELLO",
-                                 :receipt_handle => "HANDLE",
-                                 :attributes => attributes),
-                          double("message 2",
-                                 :message_id => "ID2",
-                                 :md5_of_body => "MD5",
-                                 :body => "HELLO",
-                                 :receipt_handle => "HANDLE",
-                                 :attributes => attributes)])
+            resp.data[:messages] = [
+              {
+                :message_id => "ID1",
+                :md5_of_body => "MD5",
+                :body => "HELLO",
+                :receipt_handle => "HANDLE",
+                :attributes => attributes,
+              }, {
+                :message_id => "ID2",
+                :md5_of_body => "MD5",
+                :body => "HELLO",
+                :receipt_handle => "HANDLE",
+                :attributes => attributes,
+              }
+            ]
             catch(:second_request) do
               first = true
               client.stub(:receive_message) do |opts|
@@ -336,8 +385,7 @@ module AWS
             client.stub(:receive_message) do |opts|
               count += 1
               throw :third_request if count == 3
-              response_message.stub(:message_id).
-                and_return("ID#{count}")
+              response_message[:message_id] = "ID#{count}"
               resp
             end
             catch(:third_request) do
@@ -347,42 +395,6 @@ module AWS
               end
             end
             count.should == 3
-          end
-
-          context ':poll_interval' do
-
-            let(:response_lists) { [[], [response_message], [response_message]] }
-
-            before(:each) do
-              client.stub(:receive_message) do |opts|
-                resp.stub(:messages).and_return(response_lists.shift)
-                resp
-              end
-            end
-
-            def do_poll(*args)
-              catch (:done) do
-                queue.poll(*args) do |msg|
-                  throw :done if response_lists.empty?
-                end
-              end
-            end
-
-            it 'sleeps after each empty response' do
-              Kernel.should_receive(:sleep).once
-              do_poll
-            end
-
-            it 'has sleep time configurable through :poll_interval' do
-              Kernel.should_receive(:sleep).with(5)
-              do_poll(:poll_interval => 5)
-            end
-
-            it 'does not sleep at all if :poll_interval is 0' do
-              Kernel.should_not_receive(:sleep)
-              do_poll(:poll_interval => 0)
-            end
-
           end
 
           context ':idle_timeout' do
@@ -395,7 +407,7 @@ module AWS
 
             before(:each) do
               client.stub(:receive_message) do |opts|
-                resp.stub(:messages).and_return(response_lists.shift)
+                resp.data[:messages] = response_lists.shift
                 resp
               end
               start_time
@@ -455,7 +467,7 @@ module AWS
               Time.stub(:now).and_return(start_time)
               client.stub(:receive_message) do |opts|
                 Time.stub(:now).and_return(response_times.shift)
-                resp.stub(:messages).and_return(response_lists.shift)
+                resp.data[:messages] = response_lists.shift
                 resp
               end
             end
@@ -540,24 +552,20 @@ module AWS
 
         it 'should call get_queue_attributes' do
           client.should_receive(:get_queue_attributes).
-            with(:queue_url => "url",
+            with(:queue_url => url,
                  :attribute_names => ["QueueArn"])
           queue.exists?
         end
 
         it 'should return false if NonExistentQueue is raised' do
           client.stub(:get_queue_attributes).
-            and_raise(SQS::Errors::NonExistentQueue.
-                      new(double("request"),
-                          double("response", :status => 400, :body => '<foo/>')))
+            and_raise(SQS::Errors::NonExistentQueue)
           queue.exists?.should be_false
         end
 
         it 'should return false if InvalidAddress is raised' do
           client.stub(:get_queue_attributes).
-            and_raise(SQS::Errors::InvalidAddress.
-                      new(double("request"),
-                          double("response", :status => 400, :body => '<foo/>')))
+            and_raise(SQS::Errors::InvalidAddress)
           queue.exists?.should be_false
         end
 
@@ -567,23 +575,21 @@ module AWS
 
         it 'should not rescue other exceptions' do
           client.stub(:get_queue_attributes).
-            and_raise(SQS::Errors::InvalidParameterValue.
-                      new(double("request"),
-                          double("response", :status => 400, :body => '<foo/>')))
-          lambda { queue.exists? }.
-            should raise_error(SQS::Errors::InvalidParameterValue)
+            and_raise(SQS::Errors::InvalidParameterValue)
+          lambda {
+            queue.exists?
+          }.should raise_error(SQS::Errors::InvalidParameterValue)
         end
 
       end
 
       shared_examples_for "sqs queue attribute accessor" do
 
-        let(:resp) { client.new_stub_for(:get_queue_attributes) }
+        let(:resp) { client.stub_for(:get_queue_attributes) }
 
         before(:each) do
-          resp.stub(:attributes).and_return(Hash[[[response_attribute,
-                                                   response_value]]])
-          resp.attributes["QueueArn"] ||= "abc123"
+          resp.data[:attributes] = { response_attribute => response_value }
+          resp.data[:attributes]["QueueArn"] ||= "abc123"
           client.stub(:get_queue_attributes).and_return(resp)
         end
 
@@ -593,7 +599,7 @@ module AWS
 
         it 'should call get_queue_attributes' do
           client.should_receive(:get_queue_attributes).
-            with(:queue_url => "url",
+            with(:queue_url => url,
                  :attribute_names => [request_attribute,
                                       "QueueArn"].uniq).
             and_return(resp)
@@ -643,12 +649,9 @@ module AWS
       context '#visibility_timeout=' do
 
         it 'should call set_queue_attributes' do
-          client.should_receive(:set_queue_attributes).
-            with(:queue_url => "url",
-                 :attribute => {
-                   :name => "VisibilityTimeout",
-                   :value => "12"
-                 })
+          client.should_receive(:set_queue_attributes).with(
+            :queue_url => url,
+            :attributes => { "VisibilityTimeout" => "12" })
           queue.visibility_timeout = 12
         end
 
@@ -692,12 +695,9 @@ module AWS
         end
 
         it 'should call set_queue_attributes' do
-          client.should_receive(:set_queue_attributes).
-            with(:queue_url => "url",
-                 :attribute => {
-                   :name => "MaximumMessageSize",
-                   :value => "12"
-                 })
+          client.should_receive(:set_queue_attributes).with(
+            :queue_url => url,
+            :attributes => { "MaximumMessageSize" => "12" })
           queue.maximum_message_size = 12
         end
 
@@ -715,17 +715,40 @@ module AWS
       context '#message_retention_period=' do
 
         it 'should call set_queue_attributes' do
-          client.should_receive(:set_queue_attributes).
-            with(:queue_url => "url",
-                 :attribute => {
-                   :name => "MessageRetentionPeriod",
-                   :value => "12"
-                 })
+          client.should_receive(:set_queue_attributes).with(
+            :queue_url => url,
+            :attributes => { "MessageRetentionPeriod" => "12" })
           queue.message_retention_period = 12
         end
 
         it 'returns the period argument' do
           (queue.message_retention_period = 12).should == 12
+        end
+
+      end
+
+      context '#wait_time_seconds' do
+
+        it_should_behave_like "sqs queue attribute accessor" do
+          let(:attribute) { :wait_time_seconds }
+          let(:request_attribute) { "ReceiveMessageWaitTimeSeconds" }
+          let(:response_value) { "12" }
+          let(:translated_value) { 12 }
+        end
+
+      end
+
+      context '#wait_time_seconds=' do
+
+        it 'should call set_queue_attributes' do
+          client.should_receive(:set_queue_attributes).with(
+            :queue_url => url,
+            :attributes => { "ReceiveMessageWaitTimeSeconds" => "12" })
+          queue.wait_time_seconds = 12
+        end
+
+        it 'returns the period argument' do
+          (queue.wait_time_seconds = 12).should == 12
         end
 
       end
@@ -764,9 +787,7 @@ module AWS
           policy = double('policy', :to_json => '{}')
 
           client.should_receive(:set_queue_attributes).
-            with(hash_including(:attribute => {
-              :name => 'Policy', :value => policy.to_json
-            }))
+            with(hash_including(:attributes => { 'Policy' => policy.to_json }))
 
           queue.policy = policy
 
@@ -775,8 +796,7 @@ module AWS
         it 'passes policy strings unmodified' do
 
           client.should_receive(:set_queue_attributes).
-            with(hash_including(:attribute => {
-              :name => 'Policy', :value => '{}' }))
+            with(hash_including(:attributes => { 'Policy' => '{}' }))
 
           queue.policy = '{}'
 
@@ -785,19 +805,18 @@ module AWS
         it 'deletes a policy by passing an empty string' do
 
           client.should_receive(:set_queue_attributes).
-            with(hash_including(:attribute => {
-              :name => 'Policy', :value => '' }))
+            with(hash_including(:attributes => { 'Policy' => '' }))
 
           queue.policy = nil
 
         end
-        
+
       end
 
       context '#batch_delete' do
 
         let(:response) { client.stub_for(:delete_message_batch) }
-        
+
         before(:each) do
           client.stub(:delete_message_batch).and_return(response)
         end
@@ -842,20 +861,21 @@ module AWS
         end
 
         it 'raises an error if some of the messages in the batch fail' do
-          
-          failure1 = double('failure-1', 
+
+          failed = []
+          failed << {
             :code => 'error-code-1',
             :message => 'error-message-1',
-            :sender_fault? => true,
-            :id => '0')
-
-          failure2 = double('failure-2', 
+            :sender_fault => true,
+            :id => '0',
+          }
+          failed << {
             :code => 'error-code-2',
             :message => 'error-message-2',
-            :sender_fault? => false,
-            :id => '2')
-
-          response.stub(:failed).and_return([failure1, failure2])
+            :sender_fault => false,
+            :id => '2',
+          }
+          response.data[:failed] = failed
 
           raised = false
           begin
@@ -907,7 +927,7 @@ module AWS
           queue.batch_change_visibility(5, 'h1', 'h2')
 
         end
-        
+
         it 'accepts an array of values' do
 
           client.should_receive(:change_message_visibility_batch).with(
@@ -963,20 +983,21 @@ module AWS
         end
 
         it 'raises an error if any of the messages in the batch fail' do
-           
-          failure1 = double('failure-1', 
+
+          failed = []
+          failed << {
             :code => 'error-code-1',
             :message => 'error-message-1',
-            :sender_fault? => true,
-            :id => '0')
-
-          failure2 = double('failure-2', 
+            :sender_fault => true,
+            :id => '0',
+          }
+          failed << {
             :code => 'error-code-2',
             :message => 'error-message-2',
-            :sender_fault? => false,
-            :id => '2')
-
-          response.stub(:failed).and_return([failure1, failure2])
+            :sender_fault => false,
+            :id => '2',
+          }
+          response.data[:failed] = failed
 
           raised = false
           begin
@@ -1036,16 +1057,17 @@ module AWS
           end
 
           it 'returns an array of sent messages' do
-            
-            sent1 = double('sent-1', 
-              :message_id => 'msg-1-id',
-              :md5_of_message_body => 'msg-1-md5')
 
-            sent2 = double('sent-2', 
+            sent = []
+            sent << {
+              :message_id => 'msg-1-id',
+              :md5_of_message_body => 'msg-1-md5',
+            }
+            sent << {
               :message_id => 'msg-2-id',
-              :md5_of_message_body => 'msg-2-md5')
-            
-            response.stub(:successful).and_return([sent1, sent2])
+              :md5_of_message_body => 'msg-2-md5',
+            }
+            response.data[:successful] = sent
 
             sent = queue.batch_send 'msg-1', 'msg-12'
 
@@ -1059,29 +1081,32 @@ module AWS
           end
 
           it 'raises a BatchSendError if any of the messages failed' do
-            
-            sent1 = double('sent-1', 
-              :message_id => 'msg-1-id',
-              :md5_of_message_body => 'msg-1-md5')
 
-            sent2 = double('sent-2', 
+            sent = []
+            sent << {
+              :message_id => 'msg-1-id',
+              :md5_of_message_body => 'msg-1-md5',
+            }
+            sent << {
               :message_id => 'msg-2-id',
-              :md5_of_message_body => 'msg-2-md5')
-            
-            failure1 = double('failure-1', 
+              :md5_of_message_body => 'msg-2-md5',
+            }
+
+            failed = []
+            failed << {
               :code => 'error-code-1',
               :message => 'error-message-1',
-              :sender_fault? => true,
-              :id => '0')
-
-            failure2 = double('failure-2', 
+              :sender_fault => true,
+              :id => '0',
+            }
+            failed << {
               :code => 'error-code-2',
               :message => 'error-message-2',
-              :sender_fault? => false,
-              :id => '2')
-
-            response.stub(:successful).and_return([sent1, sent2])
-            response.stub(:failed).and_return([failure1, failure2])
+              :sender_fault => false,
+              :id => '2',
+            }
+            response.data[:successful] = sent
+            response.data[:failed] = failed
 
             begin
               queue.batch_send 'msg-1', 'msg-2', 'msg-3', 'msg-4'

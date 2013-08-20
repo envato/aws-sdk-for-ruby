@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -48,4 +48,9 @@ end
 
 When /^I count the reservations I have purchased$/ do
   @ec2.reserved_instances.inject(0) { |count, ri| count + 1 }
+end
+
+When(/^I enumerate reserved instance offerings with a limit of (\d+) and batch size of (\d+)$/) do |limit, batch_size|
+  offerings = @ec2.reserved_instances_offerings
+  offerings.enumerator(:limit => limit.to_i, :batch_size => batch_size.to_i).to_a
 end

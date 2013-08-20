@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,72 +15,40 @@ module AWS
   class S3
     class Client < Core::Client
 
-      # @private
+      # @api private
       module XML
 
-        Error = Core::XmlGrammar.customize { }
+        BaseGrammar = Core::XML::Grammar.new({}, :inflect_rename => true)
 
-        module HasCommonPrefixes
-
-          def self.included(mod)
-            mod.module_eval do
-              element "CommonPrefixes" do
-                collect_values
-                format_value {|value| value.prefix }
-              end
-            end
-          end
-
-        end
-
-        ListBuckets = Core::XmlGrammar.customize do
+        ListBuckets = BaseGrammar.customize do
           element "Buckets" do
-            element "Bucket" do
-              collect_values
-            end
-            format_value { |value| super(value.bucket) }
+            list "Bucket"
           end
         end
 
-        GetBucketAcl = GetObjectAcl = Core::XmlGrammar.customize do
-          wrapper(:acl,
-                  :for => ["Owner",
-                           "AccessControlList"]) do
-            construct_value { AccessControlList.new }
-          end
-
-          element "Owner" do
-            construct_value { AccessControlList::Owner.new }
-          end
-
+        GetBucketAcl = GetObjectAcl = BaseGrammar.customize do
           element "AccessControlList" do
+            ignore
             element "Grant" do
-              collect_values
-              construct_value { AccessControlList::Grant.new }
-
+              rename :grants
+              list
               element "Grantee" do
-                construct_value { AccessControlList::Grantee.new }
                 element "ID" do
                   rename :canonical_user_id
                 end
               end
-
               element "Permission" do
                 symbol_value
               end
             end
-
-            format_value { |value| super(value.grant) }
-            rename :grants
-
           end
         end
 
-        ListObjects = Core::XmlGrammar.customize do
+        ListObjects = BaseGrammar.customize do
 
-          element("Name") { rename "bucket_name" }
+          element("Name") { rename :bucket_name }
           element("MaxKeys") { integer_value }
-          element("IsTruncated") { rename "truncated"; boolean_value }
+          element("IsTruncated") { rename :truncated; boolean_value }
           element("Delimiter") { force }
 
           element("Contents") do
@@ -92,64 +60,66 @@ module AWS
             element("Key") { }
             element("Size") { }
             element("StorageClass") { }
-            element("ETag") { rename "etag" }
+            element("ETag") { rename :etag }
 
-            # DateTime is more general, Time is much faster to construct
             element("LastModified") { time_value }
           end
 
-          include HasCommonPrefixes
+          element "CommonPrefixes" do
+            collect_values
+          end
 
         end
 
-        GetBucketVersioning = Core::XmlGrammar.customize do
+        GetBucketVersioning = BaseGrammar.customize do
+          default_value :status, :unversioned
           element("Status") do
             symbol_value
-            format_value {|value| super(value) || :unversioned }
-            force
           end
         end
 
-        ListObjectVersions = Core::XmlGrammar.customize do
+        ListObjectVersions = BaseGrammar.customize do
 
           element("MaxKeys") { integer_value }
-          element("IsTruncated") { rename "Truncated"; boolean_value }
+          element("IsTruncated") { rename :truncated; boolean_value }
           element("NextKeyMarker") { force }
           element("NextVersionIdMarker") { force }
 
           %w(DeleteMarker Version).each do |element_name|
             element(element_name) do
               collect_values
-              rename("versions")
-              element("IsLatest") { rename "latest"; boolean_value }
+              rename(:versions)
+              element("IsLatest") { rename :latest; boolean_value }
               element("LastModified") { datetime_value }
-              element("ETag") { rename "etag" }
+              element("ETag") { rename :etag }
               element("Size") { integer_value }
               element("StorageClass") { symbol_value }
             end
           end
 
           element "DeleteMarker" do
-            add_method(:delete_marker?) { true }
-            add_method(:version?) { false }
+            default_value(:delete_marker, true)
+            default_value(:version, false)
           end
 
           element "Version" do
-            add_method(:delete_marker?) { false }
-            add_method(:version?) { true }
+            default_value(:delete_marker, false)
+            default_value(:version, true)
           end
 
-          include HasCommonPrefixes
+          element "CommonPrefixes" do
+            collect_values
+          end
 
         end
 
-        # default behavior is good enough
-        InitiateMultipartUpload = Core::XmlGrammar.customize do
+        InitiateMultipartUpload = BaseGrammar.customize do
           element("UploadId") { force }
         end
 
-        ListMultipartUploads = Core::XmlGrammar.customize do
-          element("IsTruncated") { rename "Truncated"; boolean_value }
+        ListMultipartUploads = BaseGrammar.customize do
+
+          element("IsTruncated") { rename :truncated; boolean_value }
           element("MaxUploads") { integer_value }
           element("NextKeyMarker") { force }
           element("NextUploadIdMarker") { force }
@@ -159,23 +129,26 @@ module AWS
             element("StorageClass") { symbol_value }
             element("Initiated") { datetime_value }
           end
-          include HasCommonPrefixes
+
+          element "CommonPrefixes" do
+            collect_values
+          end
+
         end
 
-        DeleteObjects = Core::XmlGrammar.customize do
+        DeleteObjects = BaseGrammar.customize do
           element("Deleted") do
             element("DeleteMarker") { boolean_value }
             list
           end
-          element("Error") { list; rename('errors') }  
+          element("Error") { list; rename(:errors) }
         end
 
-        # keep default behavior
-        CompleteMultipartUpload = Core::XmlGrammar.customize
+        CompleteMultipartUpload = BaseGrammar.customize
 
-        ListParts = Core::XmlGrammar.customize do
+        ListParts = BaseGrammar.customize do
           element("StorageClass") { symbol_value }
-          element("IsTruncated") { rename "Truncated"; boolean_value }
+          element("IsTruncated") { rename :truncated; boolean_value }
           element("MaxParts") { integer_value }
           element("PartNumberMarker") { integer_value }
           element("NextPartNumberMarker") { integer_value }
@@ -185,6 +158,80 @@ module AWS
             element("PartNumber") { integer_value }
             element("LastModified") { datetime_value }
             element("Size") { integer_value }
+          end
+        end
+
+        GetBucketLifecycleConfiguration = BaseGrammar.customize do
+          element("Rule") do
+            list
+            rename(:rules)
+            element("Expiration") do
+              element("Days") { integer_value }
+              element("Date") { datetime_value }
+            end
+            element("Transition") do
+              element("StorageClass") { }
+              element("Days") { integer_value }
+              element("Date") { datetime_value }
+            end
+          end
+        end
+
+        GetBucketCors = BaseGrammar.customize do
+          element "CORSRule" do
+            list
+            rename :rules
+            element "AllowedMethod" do
+              list
+              rename :allowed_methods
+            end
+            element "AllowedOrigin" do
+              list
+              rename :allowed_origins
+            end
+            element "AllowedHeader" do
+              list
+              rename :allowed_headers
+            end
+            element "MaxAgeSeconds" do
+              integer
+            end
+            element "ExposeHeader" do
+              list
+              rename :expose_headers
+            end
+          end
+        end
+
+        GetBucketTagging = BaseGrammar.customize do
+          element "TagSet" do
+            ignore
+            element "Tag" do
+              map_entry("Key", "Value")
+              rename :tags
+            end
+          end
+        end
+
+        GetBucketWebsite = BaseGrammar.customize do
+          element "IndexDocument" do
+            element "Suffix"
+          end
+          element "ErrorDocument" do
+            element "Key"
+          end
+          element "RoutingRules" do
+            list("RoutingRule")
+          end
+        end
+
+        CopyPart = BaseGrammar.customize do
+          element "ETag" do
+            rename :etag
+          end
+          element "LastModified" do
+            datetime_value
+            rename :last_modified
           end
         end
 

@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2011-2013 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -36,6 +36,10 @@ end
 
 Then /^the table should eventually be active$/ do
   eventually { @table.status.should == :active }
+end
+
+Then /^the tables are eventually active$/ do
+  eventually { @created_tables.map(&:status).uniq.should == [:active] }
 end
 
 Given /^I ask for the table named "([^\"]*)"$/ do |name|
@@ -87,7 +91,7 @@ end
 
 When /^I update the provisioning throughput to (\d+) rcu and (\d+) wcu$/ do |rcu, wcu|
   @table.provision_throughput(
-    :read_capacity_units => rcu.to_i, 
+    :read_capacity_units => rcu.to_i,
     :write_capacity_units => wcu.to_i)
 end
 
